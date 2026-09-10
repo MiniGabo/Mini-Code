@@ -1,0 +1,7 @@
+node_modules
+dist
+release
+# LSP Java vendoreado: solo fuente; los jars del runtime se regeneran con Maven
+lsp-servers/java-language-server/dist/
+.DS_Store
+*.log

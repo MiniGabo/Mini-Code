@@ -1,0 +1,74 @@
+{
+  "name": "mini-code",
+  "productName": "Mini Code",
+  "version": "1.0.0",
+  "description": "Editor de código ligero, construido con Electron + Monaco",
+  "author": "Mini Gabo",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "main": "electron/main.cjs",
+  "packageManager": "pnpm@12.3.4",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "electron:dev": "concurrently -k -n VITE,ELECTRON -c blue,yellow \"pnpm dev\" \"pnpm wait-on:electron\"",
+    "wait-on:electron": "wait-on tcp:5173 && cross-env NODE_ENV=development electron .",
+    "electron:build": "pnpm build && electron-builder",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@types/node": "^26.5.0",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@vitejs/plugin-react": "^4.3.1",
+    "autoprefixer": "^10.4.19",
+    "concurrently": "^8.2.2",
+    "cross-env": "^7.0.3",
+    "electron": "^31.0.2",
+    "electron-builder": "^24.13.3",
+    "postcss": "^8.4.38",
+    "tailwindcss": "^3.4.4",
+    "typescript": "^7.0.2",
+    "vite": "^5.3.1",
+    "vite-plugin-monaco-editor": "^1.1.0",
+    "wait-on": "^7.2.0"
+  },
+  "dependencies": {
+    "lucide-react": "^0.400.0",
+    "monaco-editor": "^0.49.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "zustand": "^5.0.15"
+  },
+  "build": {
+    "appId": "com.gabo.minicode",
+    "productName": "Mini Code",
+    "icon": "assets/icon.ico",
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "assets/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "lsp-servers",
+        "to": "lsp-servers",
+        "filter": [
+          "fernflower/fernflower.jar",
+          "java-language-server/dist/classpath/*.jar"
+        ]
+      }
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "icon": "assets/icon.ico"
+    },
+    "linux": {
+      "icon": "assets/icon.png"
+    }
+  }
+}

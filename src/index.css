@@ -1,0 +1,179 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: "Inter";
+  src: local("Inter");
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  background-color: #131313;
+  color: #d4d4d4;
+  font-family: "Inter", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #3a3d3f;
+  border-radius: 6px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #54585b;
+}
+
+kbd {
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+  font-size: 0.75rem;
+  background: #232526;
+  border: 1px solid #3a3d3f;
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  padding: 2px 7px;
+  color: #eda05a;
+  white-space: nowrap;
+}
+
+.tree-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #a7acaf;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.tree-row:hover {
+  background: #232526;
+  color: #d4d4d4;
+}
+
+.tree-row.active {
+  background: #2c2f31;
+  color: #f4bc86;
+}
+
+/* Fila con errores: tinte rojo sutil (gana a .active) */
+.tree-row.has-errors {
+  background: rgba(255, 83, 112, 0.12);
+}
+
+/* Carpeta seleccionada como destino (sutil, distinta de .active) */
+.tree-row.selected {
+  background: rgba(237, 160, 90, 0.12);
+  color: #d4d4d4;
+}
+
+/* Destino de arrastre válido (filas y cabecera de raíz) */
+.drop-target {
+  background: rgba(237, 160, 90, 0.22);
+  outline: 1px dashed #eda05a;
+  outline-offset: -1px;
+}
+
+.titlebar-drag {
+  -webkit-app-region: drag;
+}
+.titlebar-no-drag {
+  -webkit-app-region: no-drag;
+}
+
+/* Entrada de los avisos (toasts) de error */
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Ctrl+Click a definición:
+   Ctrl+hover subraya el símbolo y pone cursor pointer; solo el click
+   navega. Se tiñe con el acento del tema manteniendo el pointer nativo. */
+.monaco-editor .goto-definition-link {
+  text-decoration-color: #7dcfff !important;
+  text-underline-offset: 2px;
+}
+
+/* Subrayado + pointer de la capa propia (cubre también símbolos cuya
+   definición está en otro archivo aún no abierto). */
+.ctrl-goto-hover {
+  text-decoration: underline !important;
+  text-decoration-color: #7dcfff !important;
+  text-underline-offset: 2px;
+  cursor: pointer !important;
+}
+
+.ctrl-goto-active,
+.ctrl-goto-active * {
+  cursor: pointer !important;
+}
+
+/* Destello del destino de un salto a definición. */
+.monaco-editor .goto-flash-line {
+  background: rgba(125, 207, 255, 0.13);
+}
+
+.goto-flash-widget {
+  pointer-events: none;
+  user-select: none;
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+  font-size: 12px;
+  color: #7dcfff;
+  background: #232526;
+  border: 1px solid #3a3d3f;
+  border-radius: 6px;
+  padding: 2px 8px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+  white-space: nowrap;
+  animation: goto-flash-fade 1.2s ease-out forwards;
+}
+
+@keyframes goto-flash-fade {
+  0% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  12% {
+    opacity: 1;
+    transform: none;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.toast-in {
+  animation: toast-in 0.18s ease-out;
+}
