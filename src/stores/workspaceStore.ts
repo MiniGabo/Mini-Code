@@ -1,4 +1,4 @@
-// Estado del workspace/explorador.
+// Workspace/explorer state.
 import { create } from "zustand";
 import type { FileTreeNode, ExplorerUndoAction } from "../types";
 

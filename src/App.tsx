@@ -1,5 +1,5 @@
-// Shell de la app: compone stores + servicios. La lógica de dominio vive en
-// stores/* y services/*; aquí solo orquestación (efectos, atajos, layout).
+// App shell: composes stores + services. Domain logic lives in
+// stores/* and services/*; orchestration only here (effects, shortcuts, layout).
 import { useCallback, useEffect, useRef } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import WelcomeScreen from "./components/WelcomeScreen";
@@ -122,7 +122,7 @@ export default function App() {
     []
   );
 
-  // El LSP abre pestañas en goto-definición entre archivos
+  // LSP opens tabs on cross-file goto-definition
   useEffect(() => {
     setOpenFileByPath((fsPath: string) => loadFileByPath(fsPath));
   }, [loadFileByPath]);
@@ -149,7 +149,7 @@ export default function App() {
   const fulfillDecompiled = useCallback((id: string, res: any) => {
     const { openFiles: current, patchFile, setLiveContent } = useEditorStore.getState();
     const entry = current.find((f) => fileKeyOf(f) === id);
-    if (!entry) return { uri: null }; // cerrada mientras cargaba
+    if (!entry) return { uri: null }; // closed while loading
     const uri = entry.modelUri;
     if (res && res.ok) {
       setPendingReveal({
@@ -183,7 +183,7 @@ export default function App() {
     setDecompiledCtl({ openPending: openDecompiledPending, fulfill: fulfillDecompiled });
   }, [openDecompiledPending, fulfillDecompiled]);
 
-  // Progreso de descompilación (main -> pestaña virtual en carga)
+  // Decompilation progress (main -> loading virtual tab)
   useEffect(() => {
     const off = window.electronAPI?.onExternalProgress?.(({ token, message }) => {
       const id = `decompiled:${token}`;
@@ -196,12 +196,12 @@ export default function App() {
     return () => off?.();
   }, []);
 
-  // Badges de errores por archivo (suscripción única en el store)
+  // Per-file error badges (single subscription in the store)
   useEffect(() => {
     ensureFileErrorSubscription();
   }, []);
 
-  // Los primeros diagnósticos confirman que el servidor compiló el proyecto
+  // First diagnostics confirm the server compiled the project
   useEffect(() => {
     const offDiag = window.electronAPI?.onDiagnostics?.(() => {
       const { lspStatus: prev, setLspStatus } = useLspStore.getState();
@@ -242,7 +242,7 @@ export default function App() {
     startLsp(tree.path);
   }, [startLsp]);
 
-  // Motor común de mover/renombrar (deshacer incluido)
+  // Shared move/rename engine (undo included)
   const moveAndRemap = useCallback(
     async (srcPath: string, destPath: string, actionLabel: string) => {
       const { notifyError: notify } = useUiStore.getState();
@@ -398,7 +398,7 @@ export default function App() {
     }
   }, [refreshTree, closeFilesInside]);
 
-  // Redimensionado del sidebar por arrastre del tirador lateral
+  // Sidebar resizing by dragging the side handle
   const startSidebarResize = useCallback((e: ReactMouseEvent) => {
     e.preventDefault();
     const startX = e.clientX;
@@ -477,7 +477,7 @@ export default function App() {
     ui.setNewFolderName("");
   }, []);
 
-  // Escritura sin re-render por tecla (texto al store vivo + flush throttled)
+  // Keystroke writes without re-render (text to live store + throttled flush)
   const handleContentChange = useCallback((value: string) => {
     const ed = useEditorStore.getState();
     if (!ed.activeKey) return;
@@ -640,7 +640,7 @@ export default function App() {
     window.electronAPI?.lspStop?.().catch(() => {});
   }, [clearLspTimer]);
 
-  // Atajos globales vía registro de comandos (extensions/commandRegistry)
+  // Global shortcuts via command registry (extensions/commandRegistry)
   useEffect(() => {
     const undoGuarded = () => {
       const ae = document.activeElement;

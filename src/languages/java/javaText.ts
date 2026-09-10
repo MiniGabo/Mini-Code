@@ -1,8 +1,8 @@
-// Análisis textual de Java (imports, FQN, variables, supertipos).
+// Java textual analysis (imports, FQN, variables, supertypes).
 import { JAVA_KEYWORDS } from "./keywords";
 import { escapeRegExp } from "../../services/text/regex";
-// Nombre de símbolo (clase o método) bajo el cursor. null si no hay
-// palabra navegable (keyword, número, vacío...).
+// Symbol name (class or method) under the cursor. null if there is no
+// navigable word (keyword, number, empty...).
 function symbolAt(model: any, position: any) {
   let word = null;
   try {
@@ -37,16 +37,16 @@ function importsOfText(text: any) {
   return { exact, stars, staticExact, staticStars };
 }
 
-// Candidatos FQN para un nombre (posiblemente punteado: Map.Entry).
-// Orden Java: import exacto, mismo paquete, import *, java.lang.
+// FQN candidates for a name (possibly dotted: Map.Entry).
+// Java order: exact import, same package, import *, java.lang.
 function fqnCandidatesForName(text: any, dottedName: any) {
   const t = fqnTiersForName(text, dottedName);
   return [...t.exact, ...t.pkg, ...t.stars, ...t.lang];
 }
 
-// Misma lista separada por tiers (sin dedup entre tiers): sirve para saber
-// de dónde sale la primera candidata (primaryKind) y no mostrar una clase
-// homónima equivocada cuando el import es explícito.
+// Same list split by tiers (no dedup across tiers): used to know
+// where the first candidate comes from (primaryKind) and to avoid showing a wrong
+// homonymous class when the import is explicit.
 function fqnTiersForName(text: any, dottedName: any) {
   const tiers: { exact: string[]; pkg: string[]; stars: string[]; lang: string[] } = { exact: [], pkg: [], stars: [], lang: [] };
   const push = (arr: any, fqn: any) => {
@@ -67,10 +67,10 @@ function fqnTiersForName(text: any, dottedName: any) {
   return tiers;
 }
 
-// Tier de la primera candidata para un head: 'exact' | 'package' | 'star' |
-// 'lang' | null. El main lo usa como primaryKind: con import exacto o FQN
-// literal de la línea NO se prueba con homónimas de otros packages (sería
-// mostrar la clase equivocada).
+// Tier of the first candidate for a head: 'exact' | 'package' | 'star' |
+// 'lang' | null. Main uses it as primaryKind: with an exact import or literal FQN
+// from the line, homonyms from other packages are NOT tried (it would
+// show the wrong class).
 function tierOfHead(text: any, head: any) {
   const t = fqnTiersForName(text, head);
   if (t.exact.length > 0) return "exact";
@@ -80,11 +80,11 @@ function tierOfHead(text: any, head: any) {
   return null;
 }
 
-// Clase escrita cualificada en la propia línea (`com.foo.Bar` como type ref
-// o como receptor `com.foo.Util.helper(`): el prefijo en minúsculas ES el
-// package, no hay nada que adivinar por imports. parts = segmentos punteados
-// ANTES de la palabra bajo el cursor (sin incluirla).
-// Devuelve { fqn, hops } o null si no es un FQN literal.
+// Qualified class written on the line itself (`com.foo.Bar` as a type ref
+// or as receiver `com.foo.Util.helper(`): the lowercase prefix IS the
+// package, there is nothing to guess from imports. parts = dotted segments
+// BEFORE the word under the cursor (excluding it).
+// Returns { fqn, hops } or null if it is not a literal FQN.
 function literalClassFromChain(parts: any) {
   if (!parts || parts.length === 0) return null;
   let clsIdx = -1;
@@ -94,13 +94,13 @@ function literalClassFromChain(parts: any) {
       break;
     }
   }
-  // Sin mayúscula no hay clase (`foo.bar` suelto); sin prefijo (`Clase.campo`)
-  // va por imports como siempre.
+  // Without an uppercase letter there is no class (bare `foo.bar`); without a prefix (`Class.field`)
+  // it goes through imports as usual.
   if (clsIdx === -1) return null;
   const pkg = parts.slice(0, clsIdx);
   if (pkg.length === 0) return null;
-  // Todo el prefijo debe ser package válido (minúsculas; nunca this/super).
-  // Si hay mayúsculas antes (`Outer.Inner.campo`) no es FQN literal.
+  // The whole prefix must be a valid package (lowercase; never this/super).
+  // If there are uppercase letters before (`Outer.Inner.field`) it is not a literal FQN.
   if (!pkg.every((s: any) => /^[a-z_$][\w$]*$/.test(s))) return null;
   if (pkg.includes("this") || pkg.includes("super")) return null;
   return { fqn: [...pkg, parts[clsIdx]].join("."), hops: parts.slice(clsIdx + 1) };
@@ -136,8 +136,8 @@ function cleanVarType(t: any) {
   return s;
 }
 
-// Tipo declarado de una variable: la declaración más cercana ANTES del uso;
-// si no hay, la primera posterior (campos declarados después del método).
+// Declared type of a variable: the closest declaration BEFORE the use;
+// if none, the first one after (fields declared after the method).
 function findVarType(text: any, varName: any, clickLineNumber: any) {
   const lines = text.split("\n");
   const re = new RegExp(
@@ -150,7 +150,7 @@ function findVarType(text: any, varName: any, clickLineNumber: any) {
     if (!m) continue;
     const type = cleanVarType(m[1]);
     if (!type) continue;
-    if (i + 1 < clickLineNumber) bestBefore = type; // pisar: la más cercana gana
+    if (i + 1 < clickLineNumber) bestBefore = type; // overwrite: the closest one wins
     else if (bestAfter == null) bestAfter = type;
   }
   return bestBefore ?? bestAfter ?? null;
@@ -166,9 +166,9 @@ function superClassName(text: any) {
   return m ? m[1] : null;
 }
 
-// Supertipos directos declarados (extends + implements, primer nivel).
-// Para que un método heredado sin receptor (`getLogger()`) también pruebe
-// la superclase (main camina el resto de la jerarquía).
+// Direct declared supertypes (extends + implements, first level).
+// So that an inherited method without receiver (`getLogger()`) also tries
+// the superclass (main walks the rest of the hierarchy).
 function directSupers(text: any) {
   const m = /(?:class|interface|enum|record)\s+[\w$]+(?:\s*<[^;{}]*>)?\s*(?:extends\s+([^\{;]+?))?\s*(?:implements\s+([^\{;]+?))?\s*(?:\{|permits\b|;)/.exec(text);
   if (!m) return [];
@@ -189,7 +189,7 @@ function directSupers(text: any) {
   return [...split(m[1]), ...split(m[2])];
 }
 
-// Candidatas FQN para la clase propia + sus supertipos directos.
+// FQN candidates for the own class + its direct supertypes.
 function ownAndSuperCandidates(text: any) {
   const out = [];
   const cls = currentClassName(text);
@@ -201,8 +201,8 @@ function ownAndSuperCandidates(text: any) {
   return [...new Set(out)];
 }
 
-// Nº de argumentos en la llamada cuyo `(` abre en openIdx (misma línea).
-// null si el paréntesis no se cierra en la línea.
+// Number of arguments in the call whose `(` opens at openIdx (same line).
+// null if the parenthesis does not close on the line.
 function countCallArity(lineText: any, openIdx: any) {
   let depth = 0;
   let commas = 0;

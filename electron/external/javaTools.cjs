@@ -18,7 +18,7 @@ function toolNextToJava(name) {
     try {
       if (fs.existsSync(full)) return full;
     } catch {
-      // seguir con el nombre del PATH
+      // fall through to the PATH name
     }
   }
   return process.platform === "win32" ? exe : name;

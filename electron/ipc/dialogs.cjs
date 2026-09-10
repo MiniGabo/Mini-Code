@@ -14,9 +14,9 @@ function register({ ipcMain, getWindow }) {
     return tree;
   });
 
-  // Selector de ubicación padre para crear una carpeta nueva.
-  // Reutiliza el mismo diálogo nativo de "Abrir carpeta", pero solo
-  // devuelve la ruta elegida sin abrirla como workspace.
+  // Parent-location picker for creating a new folder.
+  // Reuses the same native "Open folder" dialog, but only
+  // returns the chosen path without opening it as a workspace.
   ipcMain.handle("dialog:pickParentFolder", async () => {
     const result = await dialog.showOpenDialog(getWindow(), {
       title: "Selecciona dónde crear la carpeta",

@@ -1,6 +1,6 @@
-// Vista de carga de símbolos externos: la pestaña se abre de inmediato y
-// muestra el proceso (búsqueda, extracción, descompilación) hasta que llega
-// el contenido; si falla, muestra el error.
+// External symbol loading view: the tab opens immediately and
+// shows progress (search, extraction, decompilation) until the
+// content arrives; on failure, it shows the error.
 import { AlertTriangle, Loader2, FileCode2 } from "lucide-react";
 import type { OpenFile } from "../types";
 

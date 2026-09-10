@@ -53,7 +53,7 @@ app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
 });
 
-// IntelliSense Java (java-language-server por stdio)
+// Java IntelliSense (java-language-server over stdio)
 
 const { JavaLanguageClient } = require("./lsp.cjs");
 
@@ -77,7 +77,7 @@ const javaLsp = new JavaLanguageClient({
   },
 });
 
-// Handlers IPC (ver electron/ipc/* y electron/external/*)
+// IPC handlers (see electron/ipc/* and electron/external/*)
 
 const { registerWindowControls } = require("./ipc/windowControls.cjs");
 const { registerDialogs } = require("./ipc/dialogs.cjs");

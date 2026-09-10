@@ -19,7 +19,7 @@ async function jrtExtractedDir(home) {
       await fsp.stat(marker);
       return dir;
     } catch {
-      // primera vez: extracción completa (puede tardar ~1 min)
+      // first time: full extraction (may take ~1 min)
     }
     console.log(`[external] extrayendo runtime de ${home} (una sola vez)...`);
     await fsp.mkdir(dir, { recursive: true });
@@ -32,9 +32,9 @@ async function jrtExtractedDir(home) {
 }
 
 let jrtFilesCache = new Map(); // dirLower -> string[] (rutas absolutas)
-// Solo paquetes de plataforma (java/jdk/javax): el resto nunca vive en el
-// runtime. Y solo se extrae el PRIMER JDK (los demás, únicamente si ya se
-// extrajeron antes): evita extracciones en cascada de cientos de MB.
+// Only platform packages (java/jdk/javax): the rest never lives in the
+// runtime. And only the FIRST JDK is extracted (the others solely if already
+// extracted before): avoids cascading extractions of hundreds of MB.
 async function findJrtClass(fqn) {
   if (!/^(java|jdk|javax)\./.test(fqn)) return null;
   const rels = entryCandidates(fqn, ".class");
@@ -46,7 +46,7 @@ async function findJrtClass(fqn) {
       try {
         await fsp.stat(path.join(os.tmpdir(), "mini-code-jrt", tag, ".mini-code-ok"));
       } catch {
-        continue; // no extraer más JDKs por un miss
+        continue; // don't extract more JDKs on a miss
       }
     }
     let dir = null;

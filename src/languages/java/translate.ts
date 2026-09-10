@@ -78,7 +78,7 @@ function hoverContents(contents: any) {
     .map((c: any) => {
       if (typeof c === "string") return { value: c };
       if (c && typeof c.value === "string") {
-        // MarkedString { language, value } -> bloque de código
+        // MarkedString { language, value } -> code block
         if (c.language) return { value: "```" + c.language + "\n" + c.value + "\n```" };
         return { value: c.value };
       }
@@ -92,7 +92,7 @@ function definitionToLocations(monaco: any, def: any): any {
   return list
     .map((d: any) => {
       if (!d) return null;
-      // LocationLink (targetUri) o Location (uri)
+      // LocationLink (targetUri) or Location (uri)
       const uri = d.targetUri ?? d.uri;
       const range = d.targetSelectionRange ?? d.targetRange ?? d.range;
       if (!uri || !range) return null;

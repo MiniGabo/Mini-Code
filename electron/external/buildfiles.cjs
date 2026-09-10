@@ -12,7 +12,7 @@ function mvnBinary() {
     try {
       if (fs.statSync(cand).isFile()) return cand;
     } catch {
-      // siguiente
+      // next one
     }
   }
   if (process.platform === "win32") {
@@ -23,11 +23,11 @@ function mvnBinary() {
         try {
           if (fs.statSync(cand).isFile()) return cand;
         } catch {
-          // siguiente
+          // next one
         }
       }
     } catch {
-      // sin acceso al raíz
+      // no access to the root
     }
   }
   return process.platform === "win32" ? "mvn.cmd" : "mvn";
@@ -50,7 +50,7 @@ async function mavenResolvedJars(pomPath, progress) {
     const data = JSON.parse(await fsp.readFile(cacheFile, "utf8"));
     if (data && data.mtimeMs === mtimeMs && Array.isArray(data.jars)) return data.jars;
   } catch {
-    // re-resolver
+    // re-resolve
   }
   const failedAt = mvnFailAt.get(pomPath.toLowerCase()) ?? 0;
   if (Date.now() - failedAt < 5 * 60 * 1000) {
@@ -69,7 +69,7 @@ async function mavenResolvedJars(pomPath, progress) {
   const mvnArgs = ["-B", "-q", "-f", pomPath, "dependency:build-classpath", `-Dmdep.outputFile=${outFile}`, "-Dmdep.includeScope=test"];
   try {
     if (/\.cmd$/i.test(bin) || /\.bat$/i.test(bin)) {
-      // .cmd/.bat solo corren vía shell (spawn directo falla con EINVAL)
+      // .cmd/.bat only run via shell (direct spawn fails with EINVAL)
       await new Promise((resolve, reject) => {
       const cmdline = [`"${bin}"`, ...mvnArgs.map((a) => `"${a}"`)].join(" ");
       const child = spawn(cmdline, { shell: true, windowsHide: true });
@@ -78,7 +78,7 @@ async function mavenResolvedJars(pomPath, progress) {
         try {
           child.kill();
         } catch {
-          // ya terminó
+          // already finished
         }
         reject(new Error("timeout en mvn"));
       }, 240000);
@@ -112,7 +112,7 @@ async function mavenResolvedJars(pomPath, progress) {
   try {
     await fsp.writeFile(cacheFile, JSON.stringify({ mtimeMs, jars: existing }), "utf8");
   } catch {
-    // caché best-effort
+    // best-effort cache
   }
   return existing;
 }
@@ -135,13 +135,13 @@ function parsePomDeps(pomText) {
     const t = /<type>\s*([^<]+?)\s*<\/type>/.exec(body);
     if (t && t[1].trim() !== "jar") continue;
     const version = subst((v?.[1] ?? "").trim());
-    if (!version || version.includes("${")) continue; // heredada del parent: la cubre mvn
+    if (!version || version.includes("${")) continue; // inherited from the parent: covered by mvn
     deps.push({ group: subst(g[1].trim()), artifact: a[1].trim(), version });
   }
   return deps;
 }
 
-// Respaldo sin mvn: dependencias directas del pom mapeadas al repo local.
+// Fallback without mvn: direct pom dependencies mapped to the local repo.
 async function fallbackPomJars(pomPath) {
   let text = "";
   try {
@@ -205,8 +205,8 @@ function parseVersionCatalog(gradleDir) {
   return { versions, libraries };
 }
 
-// Dependencias declaradas en build.gradle / build.gradle.kts:
-// notación 'g:a:v', catálogo libs.*, mapa de una línea y ${constantes}.
+// Dependencies declared in build.gradle / build.gradle.kts:
+// 'g:a:v' notation, libs.* catalog, one-line map and ${constants}.
 function parseGradleDeps(buildText, gradleDir) {
   const catalog = parseVersionCatalog(gradleDir);
   const defs = {};
@@ -273,7 +273,7 @@ function findGradleArtifacts(group, artifact, version) {
       continue;
     }
     for (const f of files) {
-      // El -sources.jar vive en OTRA carpeta hash: se recoge aparte
+      // The -sources.jar lives in ANOTHER hash folder: collected separately
       if (f === wantedSrc) sources = path.join(h, f);
       else if (f === wantedBin) binary = path.join(h, f);
       else if (!binary && f.endsWith(".jar") && !/-sources\.jar$/i.test(f) && !/-javadoc\.jar$/i.test(f)) {
@@ -293,7 +293,7 @@ function findBuildFile(startDir, rootPath) {
       try {
         if (fs.statSync(cand).isFile()) return cand;
       } catch {
-        // no está acá
+        // not here
       }
     }
     if (stop && dir.toLowerCase() === stop.toLowerCase()) break;
@@ -305,8 +305,8 @@ function findBuildFile(startDir, rootPath) {
   return null;
 }
 
-let buildCpCache = { key: null, value: null }; // memoria por sesión
-let buildCpInflight = { key: null, promise: null }; // mvn en curso compartido
+let buildCpCache = { key: null, value: null }; // in-memory per session
+let buildCpInflight = { key: null, promise: null }; // shared in-flight mvn
 async function resolveBuildClasspath(contextDir, rootPath, progress) {
   const say = (message) => {
     try {
@@ -322,8 +322,8 @@ async function resolveBuildClasspath(contextDir, rootPath, progress) {
   const buildFile = start ? findBuildFile(start, rootPath) : null;
   const cacheKey = (buildFile ?? ("legacy:" + (rootPath ?? ""))).toLowerCase();
   if (buildCpCache.key === cacheKey && buildCpCache.value) return buildCpCache.value;
-  // Dedup en vuelo: varios hover/clicks concurrentes comparten el mismo mvn
-  // en vez de lanzar uno por click (minutos de espera encadenados).
+  // In-flight dedup: several concurrent hovers/clicks share the same mvn
+  // instead of launching one per click (chained minutes of waiting).
   if (buildCpInflight.key === cacheKey && buildCpInflight.promise) {
     return buildCpInflight.promise;
   }
@@ -355,8 +355,8 @@ async function resolveBuildClasspath(contextDir, rootPath, progress) {
       console.log(`[external] gradle declara ${deps.length} dependencias`);
       for (const d of deps) {
         const found = findGradleArtifacts(d.group, d.artifact, d.version);
-        // El binario primero y las fuentes después: la pasada de fuentes
-        // las prefiere estén donde estén.
+        // Binary first and sources after: the sources pass
+        // prefers them wherever they are.
         if (found.binary) jars.push(found.binary);
         if (found.sources) jars.push(found.sources);
       }
@@ -376,7 +376,7 @@ async function resolveBuildClasspath(contextDir, rootPath, progress) {
           jars.push(...local);
         }
       } catch {
-        // raíz ilegible
+        // unreadable root
       }
     }
     const cp = process.env.CLASSPATH;
@@ -389,7 +389,7 @@ async function resolveBuildClasspath(contextDir, rootPath, progress) {
           if (st.isFile() && e.toLowerCase().endsWith(".jar")) jars.push(e);
           else if (st.isDirectory()) dirs.push(e);
         } catch {
-          // entrada inexistente
+          // missing entry
         }
       }
     }

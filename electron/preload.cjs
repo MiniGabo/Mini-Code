@@ -1,14 +1,14 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("electronAPI", {
-  // Diálogos nativos
+  // Native dialogs
   openFolder: () => ipcRenderer.invoke("dialog:openFolder"),
   pickParentFolder: () => ipcRenderer.invoke("dialog:pickParentFolder"),
   openFile: () => ipcRenderer.invoke("dialog:openFile"),
   saveFileAs: (content, defaultName) =>
     ipcRenderer.invoke("dialog:saveFileAs", { content, defaultName }),
 
-  // Sistema de archivos
+  // File system
   readFile: (filePath) => ipcRenderer.invoke("fs:readFile", filePath),
   writeFile: (filePath, content) =>
     ipcRenderer.invoke("fs:writeFile", { filePath, content }),
@@ -22,12 +22,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
   deleteEntry: (filePath) => ipcRenderer.invoke("fs:delete", filePath),
   trashEntry: (filePath) => ipcRenderer.invoke("fs:trash", filePath),
 
-  // IntelliSense Java (java-language-server)
+  // Java IntelliSense (java-language-server)
   lspStart: (rootPath) => ipcRenderer.invoke("lsp:start", rootPath),
   lspStop: () => ipcRenderer.invoke("lsp:stop"),
   lspRequest: (method, params) => ipcRenderer.invoke("lsp:request", { method, params }),
   lspNotify: (method, params) => ipcRenderer.invoke("lsp:notify", { method, params }),
-  // Símbolos externos (JDK/dependencias): fuente real o descompilado
+  // External symbols (JDK/dependencies): real source or decompiled
   resolveExternal: (query) => ipcRenderer.invoke("external:resolve", query),
   onExternalProgress: (callback) => {
     const listener = (_event, value) => callback(value);
@@ -45,7 +45,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return () => ipcRenderer.removeListener("lsp:status", listener);
   },
 
-  // Controles de ventana (TitleBar propio)
+  // Window controls (custom TitleBar)
   minimizeWindow: () => ipcRenderer.invoke("window:minimize"),
   toggleMaximize: () => ipcRenderer.invoke("window:toggle-maximize"),
   closeWindow: () => ipcRenderer.invoke("window:close"),

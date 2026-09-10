@@ -1,19 +1,19 @@
-// Panel del editor Monaco.
-// Tema en editor/MonacoSetup; gesto Ctrl en editor/features/gotoDefinition.
+// Monaco editor pane.
+// Theme in editor/MonacoSetup; Ctrl gesture in editor/features/gotoDefinition.
 import { useEffect, useRef } from "react";
 import type { MouseEventHandler } from "react";
 
-// Importación: solo el núcleo del editor + tokenizadores.
-// Importar "monaco-editor" a secas (o su editor.main.js) trae
-// "../basic-languages/monaco.contribution", que registra TODOS los
-// lenguajes por defecto (python, html, css, ts, etc), además de los
-// servicios de lenguaje:
-//   - editor.all.js  -> núcleo + UI standalone (find, folding, minimap...)
-//   - editor.api.js  -> namespace `monaco` público
-//   - basic-languages/java/java.contribution -> tokenizador Monarch de Java
-//   - basic-languages/yaml/yaml.contribution -> tokenizador Monarch de YAML
-//   - basic-languages/xml/xml.contribution -> tokenizador Monarch de XML
-//   - basic-languages/markdown/markdown.contribution -> tokenizador de Markdown
+// Import: editor core + tokenizers only.
+// Importing plain "monaco-editor" (or its editor.main.js) pulls
+// "../basic-languages/monaco.contribution", which registers ALL
+// default languages (python, html, css, ts, etc.), plus the
+// language services:
+//   - editor.all.js  -> core + standalone UI (find, folding, minimap...)
+//   - editor.api.js  -> public `monaco` namespace
+//   - basic-languages/java/java.contribution -> Java Monarch tokenizer
+//   - basic-languages/yaml/yaml.contribution -> YAML Monarch tokenizer
+//   - basic-languages/xml/xml.contribution -> XML Monarch tokenizer
+//   - basic-languages/markdown/markdown.contribution -> Markdown tokenizer
 import "monaco-editor/esm/vs/editor/editor.all.js";
 import "monaco-editor/esm/vs/basic-languages/java/java.contribution";
 import "monaco-editor/esm/vs/basic-languages/yaml/yaml.contribution";
@@ -25,7 +25,7 @@ import { ensureJavaProviders, attachJavaDoc, consumePendingReveal, flashTarget, 
 import { createCtrlClickHandler } from "../editor/features/gotoDefinition/ctrlClick";
 import type { FlashCell } from "../editor/features/gotoDefinition/ctrlClick";
 
-// Tema + tokenizador: src/editor/MonacoSetup.ts.
+// Theme + tokenizer: src/editor/MonacoSetup.ts.
 function ensureTheme() {
   ensureMiniCodeTheme(monaco);
 }
@@ -57,25 +57,25 @@ export default function EditorPane({
 }: EditorPaneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<any>(null);
-  // Salto a definición aplicado en este archivo { key, lineNumber, column,
-  // symbol }. Vive en ref: sobrevive a la re-ejecución.
+  // Go-to-definition jump applied in this file { key, lineNumber, column,
+  // symbol }. Lives in a ref: survives re-execution.
   const revealRef = useRef<any>(null);
-  // Re-aplicación pendiente para el próximo montaje inmediato del MISMO
-  // archivo. Caduca en la próxima tarea: un remontaje real posterior
-  // (volver a la pestaña días después) restaura normal.
+  // Pending re-application for the next immediate mount of the SAME
+  // file. Expires on the next task: a later real remount
+  // (returning to the tab days later) restores normally.
   const skipRestoreRef = useRef<any>(null);
 
   useEffect(() => {
     ensureTheme();
 
     const editor = monaco.editor.create(containerRef.current!, {
-      // Modelo con URI file:// real: necesario para que el LSP asocie
-      // diagnósticos y navegación al archivo (sin URI abriría inmemory).
-      // Si el URI ya existe (efecto abortado antes de limpiar), se reutiliza
-      // en vez de romper con "already exists".
+      // Model with a real file:// URI: required so the LSP associates
+      // diagnostics and navigation with the file (without a URI it would open in-memory).
+      // If the URI already exists (effect aborted before cleanup), it is reused
+      // instead of throwing "already exists".
       model: (() => {
-        // fileUri (archivo real) o modelUri (pestaña virtual de solo
-        // lectura: fuente de dependencia o descompilado).
+        // fileUri (real file) or modelUri (read-only virtual tab:
+        // dependency source or decompiled).
         const uriStr = modelUri ?? fileUri ?? null;
         if (!uriStr) {
           return monaco.editor.createModel(initialValue, language ?? "java");
@@ -92,7 +92,7 @@ export default function EditorPane({
       })(),
       theme: "mini-code-dark",
       automaticLayout: true,
-      // Pestañas virtuales (dependencias): lectura, sin edición
+      // Virtual tabs (dependencies): read-only, no editing
       readOnly: !!readOnly,
       fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
       fontSize: 14,
@@ -105,27 +105,27 @@ export default function EditorPane({
       scrollBeyondLastLine: false,
       smoothScrolling: true,
       cursorBlinking: "smooth",
-      // Sin puntos en la regla de overview (la franja junto al scroll):
-      // se ocultan cursor, ocurrencias, selección y validaciones ahí.
+      // No dots in the overview ruler (the strip next to the scrollbar):
+      // cursor, occurrences, selection, and validations are hidden there.
       hideCursorInOverviewRuler: true,
       overviewRulerBorder: false,
       overviewRulerLanes: 0,
       occurrencesHighlight: "off",
-      // Al seleccionar un texto se resaltan sus coincidencias en el archivo
+      // Selecting text highlights its matches in the file
       selectionHighlight: true,
       wordBasedSuggestions: "off",
-      // Sugerencias siempre visibles al escribir + panel de detalle (firma y
-      // javadoc vía completionItem/resolve) al lado de cada método/clase.
+      // Suggestions always visible while typing + detail panel (signature and
+      // javadoc via completionItem/resolve) next to each method/class.
       quickSuggestions: true,
       suggestOnTriggerCharacters: true,
       suggest: { preview: false, showStatusBar: true },
-      // Bombilla de quick fixes (p. ej. "Import 'java.util.List'") con
-      // Ctrl+. al estar sobre un error sin resolver.
+      // Quick-fix lightbulb (e.g. "Import 'java.util.List'") with
+      // Ctrl+. when over an unresolved error.
       lightbulb: { enabled: monaco.editor.ShowLightbulbIconMode.On },
-      // Ctrl+Click = ir a definición: Ctrl queda reservado
-      // para el salto y el multicursor pasa a Alt+Click.
+      // Ctrl+Click = go to definition: Ctrl stays reserved
+      // for jumping and multicursor moves to Alt+Click.
       multiCursorModifier: "alt",
-      // Una definición salta directo; varias abren el peek.
+      // One definition jumps directly; several open peek.
       gotoLocation: {
         multiple: "peek",
         multipleDefinitions: "peek",
@@ -135,40 +135,40 @@ export default function EditorPane({
         multipleTypeDefinitions: "peek",
       },
       peekWidgetDefaultFocus: "editor",
-      // Ctrl+Click salta directo a la definición (sin peek intermedio).
-      // Junto con `multiCursorModifier: "alt".
+      // Ctrl+Click jumps straight to the definition (no intermediate peek).
+      // Together with `multiCursorModifier: "alt".
       definitionLinkOpensInPeek: false,
     });
 
     editorRef.current = editor;
 
-    // Registrar key -> uri para dispose al cerrar + LRU.
+    // Register key -> uri for dispose on close + LRU.
     try {
       const m = editor.getModel();
       if (m) registerModelKey(monaco, viewStateKey, m.uri.toString());
     } catch {
-      // registro best-effort
+      // best-effort registration
     }
 
-    // Ctrl+hover + Ctrl+Click a definición: editor/features/gotoDefinition.
+    // Ctrl+hover + Ctrl+Click to definition: editor/features/gotoDefinition.
     const flashCell: FlashCell = { current: () => {} };
     const ctrlClick = createCtrlClickHandler(monaco, editor, containerRef.current, language, flashCell);
 
-    // Si acabamos de saltar a este archivo y el efecto se re-ejecuta
-    // enseguida (StrictMode), el prop trae el cursor VIEJO: se omite la
-    // restauración y se re-aplica el salto más abajo.
+    // If we just jumped to this file and the effect re-runs
+    // immediately (StrictMode), the prop carries the OLD cursor:
+    // restoration is skipped and the jump is re-applied below.
     const skip =
       skipRestoreRef.current && skipRestoreRef.current.key === viewStateKey
         ? skipRestoreRef.current
         : null;
     skipRestoreRef.current = null;
 
-    // Restaura scroll/cursor de la visita anterior al archivo (salvo re-salto)
+    // Restores scroll/cursor from the previous visit to the file (unless re-jumping)
     if (initialViewState && !skip) {
       try {
         editor.restoreViewState(initialViewState);
       } catch {
-        // estado incompatible: se arranca desde arriba
+        // incompatible state: start from the top
       }
     }
 
@@ -176,9 +176,9 @@ export default function EditorPane({
       onChange(editor.getValue());
     });
 
-    // IntelliSense Java: proveedores (una vez) + sync del documento
+    // Java IntelliSense: providers (once) + document sync
     let disposeDoc = null;
-    let appliedReveal = null; // { lineNumber, column, symbol } del salto aplicado
+    let appliedReveal = null; // { lineNumber, column, symbol } of the applied jump
     if (language === "java") {
       ensureJavaProviders(monaco);
       if (fileUri) disposeDoc = attachJavaDoc(monaco, editor, fileUri);
@@ -193,10 +193,10 @@ export default function EditorPane({
           };
         }
       } catch {
-        // sin salto pendiente
+        // no pending jump
       }
       if (!appliedReveal && skip) {
-        // Remontaje inmediato tras un salto: re-aplicar destino + destello
+        // Immediate remount after a jump: re-apply target + flash
         try {
           editor.setPosition({ lineNumber: skip.lineNumber, column: skip.column });
           editor.revealPositionInCenter({ lineNumber: skip.lineNumber, column: skip.column });
@@ -207,7 +207,7 @@ export default function EditorPane({
           });
           appliedReveal = { lineNumber: skip.lineNumber, column: skip.column, symbol: skip.symbol };
         } catch {
-          // re-aplicación best-effort
+          // best-effort re-application
         }
       }
     }
@@ -218,11 +218,11 @@ export default function EditorPane({
       try {
         flashCell.current();
       } catch {
-        // sin destello que limpiar
+        // no flash to clean up
       }
-      // Si el cursor sigue sobre el destino del salto (el usuario no lo
-      // movió), el próximo montaje inmediato debe re-aplicarlo en vez de
-      // restaurar el cursor viejo. Caduca en la próxima tarea.
+      // If the cursor is still on the jump target (the user did not
+      // move it), the next immediate mount must re-apply it instead of
+      // restoring the old cursor. Expires on the next task.
       const rec = revealRef.current;
       revealRef.current = null;
       if (rec && rec.key === viewStateKey) {
@@ -244,7 +244,7 @@ export default function EditorPane({
             }, 0);
           }
         } catch {
-          // sin cursor que comparar
+          // no cursor to compare
         }
       }
       ctrlClick.dispose();
@@ -252,17 +252,17 @@ export default function EditorPane({
         try {
           onSaveViewState(viewStateKey, editor.saveViewState());
         } catch {
-          // sin estado que guardar
+          // no state to save
         }
       }
       subscription.dispose();
-      // El modelo se CONSERVA (no se dispone): los modelos viven por sesión
-      // y se reutilizan al volver a la pestaña. Disponerlo aquí obligaba a
-      // re-crear + didOpen/didClose en cada cambio de pestaña y rompía el
-      // refcount de attachJavaDoc (doble didOpen y docs "no encontrados").
+      // The model is KEPT (not disposed): models live per session
+      // and are reused when returning to the tab. Disposing it here forced
+      // re-create + didOpen/didClose on every tab switch and broke the
+      // attachJavaDoc refcount (double didOpen and "not found" docs).
       editor.dispose();
     };
-    // Solo se recrea cuando cambia el archivo (EditorPane se remonta por `key`)
+    // Only recreated when the file changes (EditorPane remounts via `key`)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

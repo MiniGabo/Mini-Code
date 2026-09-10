@@ -1,4 +1,4 @@
-// Explorador de archivos.
+// File explorer.
 import { useEffect, useRef, useState } from "react";
 import type { DragEvent as ReactDragEvent, MouseEvent as ReactMouseEvent } from "react";
 import {
@@ -59,7 +59,7 @@ function MenuDivider() {
   return <div className="mx-2 my-1 border-t border-graphite-700" />;
 }
 
-// Etiqueta de la fila: input en línea mientras se renombra
+// Row label: inline input while renaming
 function RowLabel({
   node,
   renamingPath,
@@ -292,7 +292,7 @@ export default function Sidebar({
   const [menu, setMenu] = useState<{ x: number; y: number; kind: string; path: string } | null>(null);
   const [dragOver, setDragOver] = useState<string | null>(null);
   const [dragOverRoot, setDragOverRoot] = useState(false);
-  // Destino de creación: carpeta seleccionada, o raíz si no hay selección
+  // Creation target: selected folder, or root if nothing is selected
   const targetDir = selectedPath ?? tree.path;
   const targetLabel = selectedPath ? baseName(selectedPath) : `${tree.name} (raíz)`;
 
@@ -305,8 +305,8 @@ export default function Sidebar({
     e.dataTransfer.effectAllowed = "move";
   };
 
-  // Último resaltado aplicado (ref para no re-renderizar en cada dragover:
-  // eso movía el DOM bajo el cursor y congelaba el hover).
+  // Last applied highlight (ref to avoid re-rendering on every dragover:
+  // that moved the DOM under the cursor and froze hover).
   const hlRef = useRef<{ row: string | null; root: boolean }>({ row: null, root: false });
 
   const setHL = (row: string | null, root: boolean) => {
@@ -323,8 +323,8 @@ export default function Sidebar({
     clearHL();
   };
 
-  // Un solo dragover a nivel del panel: deduce el destino desde la fila
-  // bajo el cursor (carpeta->ella misma, archivo->su padre, resto->raíz).
+  // Single panel-level dragover: derives the destination from the row
+  // under the cursor (folder->itself, file->its parent, rest->root).
   const onTreeDragOver = (e: ReactDragEvent) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
@@ -354,7 +354,7 @@ export default function Sidebar({
     if (src) onMoveEntry(src, destDir);
   };
 
-  // Soltar en el fondo del panel o en la cabecera mueve a la raíz
+  // Dropping on the panel background or header moves to the root
   const onRootDrop = (e: ReactDragEvent) => {
     const t = e.target as HTMLElement | null;
     if (t && t.closest && t.closest("[data-tpath]")) return;
@@ -370,7 +370,7 @@ export default function Sidebar({
     setDraftName(kind === "file" ? "NuevoArchivo.java" : "nueva-carpeta");
   };
 
-  // Renombrado en línea: solo Enter confirma, resto cancela
+  // Inline rename: only Enter confirms, everything else cancels
   const startRename = (path: string) => {
     setMenu(null);
     setCreating(null);
@@ -387,7 +387,7 @@ export default function Sidebar({
 
   const cancelRename = () => setRenaming(null);
 
-  // Menú contextual: se cierra con clic fuera, scroll o Escape
+  // Context menu: closes on outside click, scroll, or Escape
   useEffect(() => {
     if (!menu) return;
     const onKey = (e: KeyboardEvent) => {
@@ -420,8 +420,8 @@ export default function Sidebar({
     startCreate(kind);
   };
 
-  // Solo Enter confirma. Cualquier otra acción (clic fuera, Escape...)
-  // cancela sin crear nada.
+  // Only Enter confirms. Any other action (outside click, Escape...)
+  // cancels without creating anything.
   const cancelCreate = () => {
     setCreating(null);
     setDraftName("");

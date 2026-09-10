@@ -1,10 +1,10 @@
-// Registro central de comandos. por comandos registrables: el día que haya
-// plugins o terminal, añaden comandos acá sin tocar App.
+// Central command registry. For registrable commands: when there are
+// plugins or a terminal, they add commands here without touching App.
 
 export interface Command {
   id: string;
   title: string;
-  /** Atajo canónico, p. ej. "ctrl+s", "ctrl+shift+e". Solo informativo. */
+  /** Canonical shortcut, e.g. "ctrl+s", "ctrl+shift+e". Informational only. */
   shortcut?: string;
   run: () => void | Promise<void>;
 }
@@ -35,8 +35,8 @@ function keyOf(e: KeyboardEvent, isMac: boolean): string | null {
 }
 
 /**
- * Conecta el mapa de atajos -> ids de comando. App lo llama una vez con
- * sus handlers; los tests pueden llamar runCommand directamente.
+ * Connects the shortcut -> command-id map. App calls it once with
+ * its handlers; tests can call runCommand directly.
  */
 export function handleShortcutEvent(
   e: KeyboardEvent,

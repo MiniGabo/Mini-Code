@@ -1,4 +1,4 @@
-// Estado del editor: pestañas, texto vivo, view-states y recientes.
+// Editor state: tabs, live text, view-states, and recents.
 import { create } from "zustand";
 import type { OpenFile, FileKey } from "../types";
 import { fileKeyOf } from "../services/files/paths";
@@ -17,9 +17,9 @@ interface EditorState {
   openFiles: OpenFile[];
   activeKey: FileKey | null;
   recentFiles: string[];
-  /** Texto vivo por key (fuente de verdad al teclear; no dispara render). */
+  /** Live text by key (source of truth while typing; does not trigger render). */
   liveContents: Map<FileKey, string>;
-  /** View-states de Monaco por key (scroll/cursor entre pestañas). */
+  /** Monaco view-states by key (scroll/cursor across tabs). */
   viewStates: Map<FileKey, unknown>;
 
   openOrActivate: (file: OpenFile) => void;
@@ -112,13 +112,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       try {
         localStorage.setItem(RECENT_KEY, JSON.stringify(updated));
       } catch {
-        // sin localStorage: solo sesión
+        // no localStorage: session only
       }
       return { recentFiles: updated };
     }),
 }));
 
-// Throttle de sincronización texto-vivo -> estado React (500ms).
+// Live-text -> React state sync throttle (500ms).
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
 export function scheduleLiveFlush(): void {
   if (flushTimer) return;

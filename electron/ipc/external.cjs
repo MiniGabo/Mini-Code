@@ -8,7 +8,7 @@ function register({ ipcMain, app, getWindow, getRootPath }) {
           getWindow().webContents.send("external:progress", { token, message });
         }
       } catch {
-        // progreso best-effort
+        // best-effort progress
       }
     };
     try {

@@ -1,7 +1,7 @@
-// Diagnósticos: markers Monaco + conteo de errores por archivo (badges).
+// Diagnostics: Monaco markers + per-file error count (badges).
 import { SEVERITY_MAP } from "../../../languages/java/translate";
-// Errores por archivo para badges (sidebar/tabs). Map fsPathLower -> count.
-// Solo severidad Error (LSP 1); los warnings no cuentan.
+// Per-file errors for badges (sidebar/tabs). Map fsPathLower -> count.
+// Only Error severity (LSP 1); warnings do not count.
 const fileErrorCounts = new Map<string, number>();
 const fileErrorListeners = new Set<(errors: Record<string, number>) => void>();
 
@@ -19,7 +19,7 @@ function emitFileErrors() {
     try {
       fn(snapshot);
     } catch {
-      // listener roto: no rompe el resto
+      // broken listener: does not break the rest
     }
   }
 }
@@ -38,23 +38,23 @@ function clearFileErrors() {
 let diagnosticsUnsub = null;
 
 function setupDiagnostics(monaco: any) {
-  // Re-suscripción limpia incluso entre re-ejecuciones del módulo (HMR):
-  // el unsub vive en window, no en estado del módulo.
+  // Clean re-subscription even across module re-executions (HMR):
+  // the unsub lives on window, not in module state.
   if ((window as any).__miniCodeDiagUnsub) {
     try {
       (window as any).__miniCodeDiagUnsub();
     } catch {
-      // seguir igual
+      // keep going anyway
     }
     (window as any).__miniCodeDiagUnsub = null;
   }
   if (!window.electronAPI?.onDiagnostics) return;
   diagnosticsUnsub = window.electronAPI.onDiagnostics(({ uri, diagnostics }: any) => {
-    // Matcheo por fsPath (insensible a %20/mayúsculas): el servidor puede
-    // devolver el URI con normalización distinta a la de Monaco.
+    // Matching by fsPath (insensitive to %20/case): the server may
+    // return the URI with different normalization than Monaco's.
     const targetFs = fsKeyOfUri(monaco, uri);
     if (!targetFs) return;
-    // Badge de errores (aunque no haya modelo abierto del archivo)
+    // Error badge (even with no open model for the file)
     const errors = (diagnostics ?? []).filter((d: any) => (d.severity ?? 1) === 1).length;
     if (errors > 0) fileErrorCounts.set(targetFs, errors);
     else fileErrorCounts.delete(targetFs);

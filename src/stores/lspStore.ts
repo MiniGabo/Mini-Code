@@ -1,4 +1,4 @@
-// Estado del IntelliSense: status + errores por archivo (badges).
+// IntelliSense state: status + per-file errors (badges).
 import { create } from "zustand";
 import type { LspStatus } from "../types";
 import { subscribeFileErrors } from "../lsp.js";
@@ -17,8 +17,8 @@ export const useLspStore = create<LspState>((set) => ({
   clearErrors: () => set({ fileErrors: {} }),
 }));
 
-// Suscripción única módulo <-> motor de diagnósticos: los badges se
-// actualizan sin pasar por App. (Guard anti-doble-suscripción por HMR.)
+// Single module <-> diagnostics engine subscription: badges
+// update without going through App. (Anti-double-subscription guard for HMR.)
 let subscribed = false;
 export function ensureFileErrorSubscription(): void {
   if (subscribed) return;

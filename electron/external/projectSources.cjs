@@ -50,7 +50,7 @@ function javaSrcIndexPath(rootPath) {
   return path.join(os.tmpdir(), "mini-code-javasrc", tag + ".json");
 }
 
-let javaSrcCache = { key: null, rels: null }; // rels: Set de "com/foo/Bar.java"
+let javaSrcCache = { key: null, rels: null }; // rels: Set of "com/foo/Bar.java"
 async function projectSourceRels(rootPath) {
   const key = (rootPath ?? "").toLowerCase();
   if (javaSrcCache.key === key && javaSrcCache.rels) return javaSrcCache.rels;
@@ -62,7 +62,7 @@ async function projectSourceRels(rootPath) {
       rels = new Set(data.rels);
     }
   } catch {
-    // índice ausente o vencido: recorrer
+    // missing or expired index: walk
   }
   if (!rels && rootPath) {
     try {
@@ -78,11 +78,11 @@ async function projectSourceRels(rootPath) {
           await fsp.mkdir(path.dirname(idxFile), { recursive: true });
           await fsp.writeFile(idxFile, JSON.stringify({ time: Date.now(), rels: [...rels] }), "utf8");
         } catch {
-          // caché best-effort
+          // best-effort cache
         }
       }
     } catch {
-      // raíz ilegible
+      // unreadable root
     }
   }
   if (!rels) rels = new Set();
@@ -90,8 +90,8 @@ async function projectSourceRels(rootPath) {
   return rels;
 }
 
-// Tiene el proyecto el fuente de este FQN? (cualquier root de fuentes:
-// src/main/java, src, ...: basta que termine en el path del FQN)
+// Does the project have the source for this FQN? (any source root:
+// src/main/java, src, ...: it just needs to end with the FQN path)
 async function hasProjectSource(fqn, rootPath) {
   if (!rootPath) return false;
   const rels = await projectSourceRels(rootPath);

@@ -1,9 +1,9 @@
-/* Cliente LSP mínimo (JSON-RPC por stdio) para java-language-server.
+/* Minimal LSP client (JSON-RPC over stdio) for java-language-server.
  *
- * Vive en el proceso main: lanza `org.javacs.Main` con el JDK del sistema,
- * mantiene el ciclo initialize/initialized/shutdown/exit y traduce
- * notificaciones (diagnósticos) hacia el renderer. El renderer nunca habla
- * con el servidor directamente: usa los handlers `lsp:*` de main.cjs.
+ * It lives in the main process: it spawns `org.javacs.Main` with the system JDK,
+ * keeps the initialize/initialized/shutdown/exit cycle going and forwards
+ * notifications (diagnostics) to the renderer. The renderer never talks
+ * to the server directly: it uses the `lsp:*` handlers in main.cjs.
  */
 const { spawn } = require("child_process");
 const path = require("path");
@@ -43,9 +43,9 @@ function javaBinary() {
   return process.platform === "win32" ? "java.exe" : "java";
 }
 
-// El servidor invoca `mvn` para inferir dependencias (InferConfig). Como
-// Electron no siempre hereda el PATH de la terminal, se buscan ubicaciones
-// típicas de Maven y se anteponen al PATH del hijo (best-effort).
+// The server invokes `mvn` to infer dependencies (InferConfig). Since
+// Electron doesn't always inherit the terminal's PATH, typical
+// Maven locations are searched and prepended to the child's PATH (best-effort).
 function extraPathDirs() {
   const dirs = [];
   for (const v of [process.env.MAVEN_HOME, process.env.M2_HOME]) {
@@ -63,7 +63,7 @@ function extraPathDirs() {
         if (fs.existsSync(path.join(bin, "mvn.cmd"))) dirs.push(bin);
       }
     } catch {
-      // sin acceso al raíz: se omite
+      // no access to the root: skipped
     }
   }
   return [...new Set(dirs)];
@@ -71,7 +71,7 @@ function extraPathDirs() {
 
 function toRootUri(rootPath) {
   let p = path.resolve(rootPath).replace(/\\/g, "/");
-  // file:///C:/... (codifica espacios y caracteres especiales)
+  // file:///C:/... (encodes spaces and special characters)
   return "file://" + (p.startsWith("/") ? "" : "/") + encodeURI(p);
 }
 
@@ -125,10 +125,10 @@ class JavaLanguageClient {
       PATH: [...extraDirs, process.env.PATH ?? ""].join(path.delimiter),
     };
 
-    // Techo de memoria JVM. Sin -Xmx la JVM del language server
-    // crecía libre (1-2 GB típico). 768M rinde bien en proyectos normales;
-    // se puede subir con MINICODE_JAVA_XMX=1G si un proyecto gigante lo pide.
-    // TieredStopAtLevel=1 acelera el arranque y baja CPU inicial.
+    // JVM memory cap. Without -Xmx the language server's JVM
+    // would grow freely (1-2 GB typical). 768M performs well on normal projects;
+    // it can be raised with MINICODE_JAVA_XMX=1G if a giant project needs it.
+    // TieredStopAtLevel=1 speeds up startup and lowers initial CPU.
     const javaXmx = process.env.MINICODE_JAVA_XMX || "-Xmx768m";
     const JAVA_MEM = [
       "-Xms256m",
@@ -145,17 +145,17 @@ class JavaLanguageClient {
       windowsHide: true,
       env: childEnv,
     });
-    // Generación: ignora eventos tardíos de procesos ya reemplazados
+    // Generation: ignore late events from already replaced processes
     const gen = (this.generation = (this.generation ?? 0) + 1);
     this.rootPath = resolved;
     this.ready = false;
     this.buffer = Buffer.alloc(0);
 
     this.proc.stdout.on("data", (chunk) => this.onData(chunk));
-    // Drenar stderr sin loguear: si nadie lo lee, el pipe se llena y bloquea al hijo.
+    // Drain stderr without logging: if nobody reads it, the pipe fills up and blocks the child.
     this.proc.stderr.on("data", () => {});
     this.proc.on("exit", (code, signal) => {
-      if (gen !== this.generation) return; // proceso viejo, ignorar
+      if (gen !== this.generation) return; // old process, ignore
       const unexpected = !this.expectExit;
       this.proc = null;
       this.ready = false;
@@ -174,7 +174,7 @@ class JavaLanguageClient {
       throw err;
     });
 
-    // Pequeña espera para detectar fallo inmediato de arranque (sin java, etc.)
+    // Brief wait to detect an immediate startup failure (no java, etc.)
     await new Promise((resolve, reject) => {
       const timer = setTimeout(resolve, 800);
       this.proc.once("exit", () => {
@@ -190,8 +190,8 @@ class JavaLanguageClient {
       throw new Error("El language server no está en ejecución tras el arranque");
     }
 
-    // initialize va por requestRaw directo, no por request():
-    // request() exige ready=true y nada está ready antes de initialize.
+    // initialize goes through requestRaw directly, not request():
+    // request() requires ready=true and nothing is ready before initialize.
     const result = await this.requestRaw(
       this.proc,
       "initialize",
@@ -236,7 +236,7 @@ class JavaLanguageClient {
       await this.requestRaw(proc, "shutdown", null, 5000).catch(() => null);
       this.sendRaw(proc, { jsonrpc: "2.0", method: "exit" });
     } catch {
-      // sigue con el kill
+      // proceed with the kill
     }
     if (!proc.killed && proc.exitCode === null) {
       proc.kill();
@@ -313,9 +313,9 @@ class JavaLanguageClient {
   }
 
   async request(method, params, timeoutMs) {
-    // Auto-recuperación con freno SOLO si el proceso murió (no si está
-    // arrancando: un request a mitad del arranque no debe matar el proceso
-    // naciente). Un solo reintento por minuto.
+    // Auto-recovery with a brake ONLY if the process died (not if it is
+    // starting: a request mid-startup must not kill the nascent
+    // process). A single retry per minute.
     if (!this.isRunning()) {
       const now = Date.now();
       if (this.rootPath && now - this.lastAutoRestart > 60000) {
@@ -323,7 +323,7 @@ class JavaLanguageClient {
         try {
           await this.start(this.rootPath);
         } catch {
-          // reintento fallido: se informará en el próximo request
+          // failed retry: it will be reported on the next request
         }
       }
     }
@@ -338,15 +338,15 @@ class JavaLanguageClient {
     try {
       this.sendRaw(this.proc, { jsonrpc: "2.0", method, params: params ?? {} });
     } catch {
-      // notificaciones best-effort
+      // best-effort notifications
     }
   }
 
   didOpen(uri, languageId, text) {
     if (!this.isRunning()) return;
-    // Idempotente: un segundo didOpen sin didClose (StrictMode, remontaje)
-    // no debe re-abrir el doc en el servidor. Se
-    // re-sincroniza como cambio y se mantiene la versión.
+    // Idempotent: a second didOpen without didClose (StrictMode, remount)
+    // must not re-open the doc on the server. It is
+    // re-synced as a change and the version is kept.
     if (this.versions.has(uri)) {
       this.didChange(uri, text);
       return;
@@ -359,10 +359,10 @@ class JavaLanguageClient {
 
   didChange(uri, text) {
     if (!this.isRunning()) return;
-    // didChange llega en cada pausa de tecleo; sin log en prod.
+    // didChange arrives on every typing pause; no logging in prod.
     const version = (this.versions.get(uri) ?? 0) + 1;
     this.versions.set(uri, version);
-    // Reemplazo total: válido aunque el servidor anuncie sync incremental
+    // Full replacement: valid even if the server advertises incremental sync
     this.notify("textDocument/didChange", {
       textDocument: { uri, version },
       contentChanges: [{ text }],
@@ -371,8 +371,8 @@ class JavaLanguageClient {
 
   didClose(uri) {
     if (!this.isRunning()) return;
-    // Solo cerrar docs conocidos: evita didClose huérfanos del doble
-    // montaje que cerraban un doc aún abierto en el editor.
+    // Only close known docs: avoids orphan didClose from the double
+    // mount that closed a doc still open in the editor.
     if (!this.versions.has(uri)) return;
     this.versions.delete(uri);
     this.notify("textDocument/didClose", { textDocument: { uri } });

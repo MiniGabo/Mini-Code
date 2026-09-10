@@ -1,18 +1,18 @@
-// Autocompletado: sugerencias + auto-import + resolve de docs.
+// Autocompletion: suggestions + auto-import + docs resolve.
 import { KIND_MAP, docToMarkdown, lspRangeToMonaco, lspTextEditToMonaco } from "./translate";
 import { dedupedLspRequest } from "../../services/lsp/request";
 import { escapeRegExp } from "../../services/text/regex";
-// Item crudo del servidor por sugerencia (para completionItem/resolve).
-// WeakMap: Monaco devuelve el mismo objeto a resolveCompletionItem.
+// Raw server item per suggestion (for completionItem/resolve).
+// WeakMap: Monaco returns the same object to resolveCompletionItem.
 const completionRawBySuggestion = new WeakMap();
 
-// Auto-import al aceptar una clase del autocompletado.
+// Auto-import when accepting a class from autocompletion.
 function importEditForClass(model: any, fqn: any) {
   if (typeof fqn !== "string") return null;
   const dot = fqn.lastIndexOf(".");
   if (dot <= 0 || fqn.includes("/") || /\s/.test(fqn)) return null;
   const simple = fqn.slice(dot + 1);
-  if (!/^[A-Z]/.test(simple)) return null; // solo clases
+  if (!/^[A-Z]/.test(simple)) return null; // only classes
   let text = "";
   try {
     text = model.getValue();
@@ -20,14 +20,14 @@ function importEditForClass(model: any, fqn: any) {
     return null;
   }
   const esc = escapeRegExp(fqn);
-  // Ya importada explícitamente
+  // Already explicitly imported
   if (new RegExp(`^\\s*import\\s+(?:static\\s+)?${esc}\\s*;`, "m").test(text)) return null;
   const filePkgMatch = /^\s*package\s+([\w.]+)\s*;/m.exec(text);
   const filePkg = filePkgMatch ? filePkgMatch[1] : null;
   const classPkg = fqn.slice(0, dot);
-  if (filePkg && classPkg === filePkg) return null; // mismo paquete
-  if (classPkg === "java.lang") return null; // implícito
-  // Cubierta por import con wildcard del mismo paquete
+  if (filePkg && classPkg === filePkg) return null; // same package
+  if (classPkg === "java.lang") return null; // implicit
+  // Covered by a wildcard import from the same package
   if (new RegExp(`^\\s*import\\s+${escapeRegExp(classPkg)}\\.\\*\\s*;`, "m").test(text)) {
     return null;
   }
@@ -62,10 +62,10 @@ function importEditForClass(model: any, fqn: any) {
 
 function suggestionFromLspItem(monaco: any, model: any, item: any, range: any) {
   const label = typeof item.label === "string" ? item.label : item.label?.label ?? "";
-  // El servidor manda métodos como snippet ("nombre($0)"): sin esta
-  // regla Monaco inserta el "$0" como texto literal.
+  // The server sends methods as snippets ("name($0)"): without this
+  // rule Monaco inserts "$0" as literal text.
   const isSnippet = item.insertTextFormat === 2;
-  // textEdit del servidor (si viene) manda sobre el rango de la palabra.
+  // Server textEdit (if present) takes precedence over the word range.
   let useRange = range;
   let insertText = item.insertText ?? label;
   if (item.textEdit?.newText != null) {
@@ -84,16 +84,16 @@ function suggestionFromLspItem(monaco: any, model: any, item: any, range: any) {
     insertTextRules: isSnippet
       ? monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet
       : undefined,
-    // Auto-import: el servidor puede traer additionalTextEdits (p. ej. el
-    // import de la clase aceptada) y Monaco los aplica al aceptar. Como este
-    // servidor no los manda, se sintetizan aquí para clases con FQN conocido.
+    // Auto-import: the server may bring additionalTextEdits (e.g. the
+    // import of the accepted class) and Monaco applies them on accept. Since this
+    // server does not send them, they are synthesized here for classes with a known FQN.
     additionalTextEdits: (() => {
       if (Array.isArray(item.additionalTextEdits)) {
         const edits = item.additionalTextEdits.map(lspTextEditToMonaco).filter(Boolean);
         if (edits.length > 0) return edits;
       }
-      // LSP CompletionItemKind.Class = 7: la sugerencia trae el FQN en
-      // data.className (o en detail como respaldo).
+      // LSP CompletionItemKind.Class = 7: the suggestion carries the FQN in
+      // data.className (or in detail as a fallback).
       if (item.kind === 7) {
         const fqn =
           (item.data && typeof item.data.className === "string" && item.data.className) ||
@@ -103,7 +103,7 @@ function suggestionFromLspItem(monaco: any, model: any, item: any, range: any) {
       }
       return undefined;
     })(),
-    // Ej. "editor.action.triggerParameterHints" tras completar métodos
+    // E.g. "editor.action.triggerParameterHints" after completing methods
     command:
       item.command?.command != null
         ? {
@@ -130,14 +130,14 @@ async function resolveSuggestionDocs(suggestion: any) {
   } catch {
     raw = null;
   }
-  // Sin data del servidor no hay nada que resolver (keywords, snippets...).
-  // Si ya trae documentación inline tampoco se pide nada.
+  // Without server data there is nothing to resolve (keywords, snippets...).
+  // If it already carries inline documentation nothing is requested either.
   if (!raw || raw.data == null || suggestion.documentation) return suggestion;
   try {
     const resolved = await dedupedLspRequest("completionItem/resolve", raw);
     if (!resolved) return suggestion;
-    // Firma completa + javadoc (+ overloads): es lo que alimenta el panel
-    // de detalle al lado de cada método en el widget de sugerencias.
+    // Full signature + javadoc (+ overloads): this feeds the detail panel
+    // next to each method in the suggestion widget.
     if (resolved.detail && !suggestion.documentation) {
       suggestion.detail = resolved.detail;
       if (suggestion.label && typeof suggestion.label === "object") {
@@ -151,7 +151,7 @@ async function resolveSuggestionDocs(suggestion: any) {
       if (edits.length > 0) suggestion.additionalTextEdits = edits;
     }
   } catch {
-    // resolve best-effort: la sugerencia sigue válida sin docs
+    // best-effort resolve: the suggestion is still valid without docs
   }
   return suggestion;
 }

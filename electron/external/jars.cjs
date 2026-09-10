@@ -61,7 +61,7 @@ async function filterExisting(paths) {
     try {
       if ((await fsp.stat(p)).isFile()) out.push(p);
     } catch {
-      // inexistente: se descarta
+      // missing: discarded
     }
   }
   return [...new Set(out)];

@@ -1,4 +1,4 @@
-// Estado de UI global: sidebar, toasts, modales.
+// Global UI state: sidebar, toasts, modals.
 import { create } from "zustand";
 import type { Toast, PendingClose } from "../types";
 
@@ -12,7 +12,7 @@ function loadSidebarWidth(): number {
     const v = parseInt(localStorage.getItem(SIDEBAR_WIDTH_KEY) ?? "", 10);
     if (Number.isFinite(v)) return Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, v));
   } catch {
-    // sin localStorage: ancho por defecto
+    // no localStorage: default width
   }
   return SIDEBAR_DEFAULT;
 }
@@ -21,7 +21,7 @@ function persistWidth(width: number): void {
   try {
     localStorage.setItem(SIDEBAR_WIDTH_KEY, String(width));
   } catch {
-    // sin localStorage: el ancho solo vive en la sesión
+    // no localStorage: width only lives for the session
   }
 }
 

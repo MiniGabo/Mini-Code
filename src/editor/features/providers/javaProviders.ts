@@ -1,5 +1,5 @@
-// Registro de providers Monaco para `java` (completion, hover, signature,
-// definition, codeActions). Extraído de src/lsp.js sin cambios de lógica.
+// Monaco provider registration for `java` (completion, hover, signature,
+// definition, codeActions). Extracted from src/lsp.js with no logic changes.
 import { trackMonaco } from "../../../services/editor/modelRegistry";
 import { setupDiagnostics } from "../diagnostics/diagnostics";
 import { dedupedLspRequest } from "../../../services/lsp/request";
@@ -14,8 +14,8 @@ import { suggestionFromLspItem, resolveSuggestionDocs } from "../../../languages
 import { resolveDefinition } from "../navigation/definition";
 import { buildExternalQuery } from "../../../languages/java/externalQuery";
 const JAVA_PROVIDERS_KEY = "__miniCodeJavaProviders";
-// Caché del suplemento externo del hover (firma+javadoc): evita repetir el
-// resolve en cada movimiento del ratón sobre el mismo símbolo.
+// Cache for the external hover supplement (signature+javadoc): avoids repeating
+// the resolve on every mouse movement over the same symbol.
 const hoverExtCache: Map<string, { time: number; res: any }> = new Map(); // key -> { time, res }
 const hoverExtInflight: Map<string, Promise<any>> = new Map(); // key -> Promise
 
@@ -47,9 +47,9 @@ function hoverResToValue(model: any, position: any, res: any) {
 function ensureJavaProviders(monaco: any) {
   trackMonaco(monaco);
   setupDiagnostics(monaco);
-  // Exactamente un juego por sesión, aunque este módulo se re-ejecute
-  // (HMR del dev recarga /src pero no node_modules). La marca vive en
-  // window: el objeto monaco importado está congelado (no extensible).
+  // Exactly one set per session, even if this module re-executes
+  // (dev HMR reloads /src but not node_modules). The flag lives on
+  // window: the imported monaco object is frozen (non-extensible).
   if ((window as any)[JAVA_PROVIDERS_KEY]) return;
   (window as any)[JAVA_PROVIDERS_KEY] = true;
 
@@ -75,14 +75,14 @@ function ensureJavaProviders(monaco: any) {
           startColumn: word.startColumn,
           endColumn: word.endColumn,
         };
-        // Firma (detail) + javadoc (documentation vía resolve) + auto-import
+        // Signature (detail) + javadoc (documentation via resolve) + auto-import
         // (additionalTextEdits): suggestionFromLspItem/resolveCompletionItem.
         const suggestions = items.map((item: any) => suggestionFromLspItem(monaco, model, item, range));
-        // Dedup por (kind,label): el mismo método puede venir con y sin
-        // snippet según la ruta del servidor. Se queda el que inserta
-        // paréntesis (el Tab acepta el resaltado y el clic el elegido, y sin
-        // esto podían tomar variantes distintas). Sin duplicados no cambia
-        // nada porque gana el primero.
+        // Dedup by (kind,label): the same method may arrive with and without
+        // snippet depending on the server path. Keep the one that inserts
+        // parentheses (Tab accepts the highlighted one and click accepts the chosen one, and without
+        // this they could pick different variants). With no duplicates nothing changes
+        // because the first one wins.
         const byKey = new Map();
         for (const s of suggestions) {
           const labelStr = typeof s.label === "string" ? s.label : s.label?.label ?? "";
@@ -101,21 +101,21 @@ function ensureJavaProviders(monaco: any) {
         return { suggestions: [] };
       }
     },
-    // Panel de detalle al lado de cada sugerencia: firma completa y javadoc.
-    // El servidor lo sirve en completionItem/resolve (resolveProvider=true).
-    // Best-effort: si falla, la sugerencia sigue válida sin docs.
+    // Detail panel next to each suggestion: full signature and javadoc.
+    // Served by the server via completionItem/resolve (resolveProvider=true).
+    // Best-effort: if it fails, the suggestion is still valid without docs.
     resolveCompletionItem(item: any) {
       return resolveSuggestionDocs(item);
     },
   });
 
-  // Quick fixes (bombilla / Ctrl+. y enlace "Quick Fix..." del hover sobre
-  // el error). El caso principal es "cannot resolve": escribir `List` a mano
-  // (o aceptarlo sin import) deja un diagnóstico de error, y aquí el
-  // servidor devuelve un "Import '...'" por cada clase candidata del
-  // JDK/dependencias para elegir. Se conserva el orden del servidor.
-  // NOTA: cada acción lleva `diagnostics` con el marker de Monaco: sin eso
-  // el hover del error no muestra el enlace "Quick Fix...".
+  // Quick fixes (lightbulb / Ctrl+. and "Quick Fix..." link in the hover over
+  // the error). The main case is "cannot resolve": typing `List` by hand
+  // (or accepting it without import) leaves an error diagnostic, and here the
+  // server returns an "Import '...'" for each candidate class from the
+  // JDK/dependencies to choose from. The server order is preserved.
+  // NOTE: each action carries `diagnostics` with the Monaco marker: without it
+  // the error hover does not show the "Quick Fix..." link.
   monaco.languages.registerCodeActionProvider("java", {
     async provideCodeActions(model: any, range: any, context: any) {
       try {
@@ -124,8 +124,8 @@ function ensureJavaProviders(monaco: any) {
         return { actions: [], dispose() {} };
       }
       try {
-        // Diagnósticos del propio archivo que solapan el rango pedido (es lo
-        // que decide si el servidor responde quick fixes o acciones de cursor).
+        // Diagnostics from the file itself overlapping the requested range (this is what
+        // decides whether the server answers quick fixes or cursor actions).
         let markers = [];
         try {
           markers = monaco.editor.getModelMarkers({ resource: model.uri });
@@ -157,9 +157,9 @@ function ensureJavaProviders(monaco: any) {
           range: lspRange,
           context: {
             diagnostics,
-            // Monaco manda `only` como string ("quickfix") en el hover y
-            // como undefined en la bombilla; el servidor lo exige como
-            // array (List<String>) y revienta si llega string.
+            // Monaco sends `only` as a string ("quickfix") in the hover and
+            // as undefined in the lightbulb; the server requires it as an
+            // array (List<String>) and crashes if a string arrives.
             only: Array.isArray(context.only) ? context.only : ["quickfix"],
           },
         });
@@ -202,8 +202,8 @@ function ensureJavaProviders(monaco: any) {
 
   monaco.languages.registerHoverProvider("java", {
     async provideHover(model: any, position: any) {
-      // Pestañas virtuales: sin LSP y sin resolveExternal (evita colgar el
-      // hover con descompilaciones y timeouts de 20s en decompiled://).
+      // Virtual tabs: no LSP and no resolveExternal (avoids hanging the
+      // hover with decompilations and 20s timeouts on decompiled://).
       try {
         if (model.uri.scheme !== "file") return null;
       } catch {
@@ -231,15 +231,15 @@ function ensureJavaProviders(monaco: any) {
           }
         }
       } catch {
-        // el servidor falla con algunos heredados (p. ej. "no method"):
-        // se intenta el suplemento externo abajo
+        // the server fails with some inherited ones (e.g. "no method"):
+        // the external supplement below is tried
       }
-      // Suplemento para dependencias: el servidor no documenta símbolos
-      // externos/heredados; se muestra la firma (+ javadoc si hay fuente).
-      // Con timeout para no colgar el hover si hay que descompilar, más
-      // caché + dedup en vuelo: el hover se dispara en cada movimiento del
-      // ratón y sin esto cada hover encolaba un resolveExternal completo
-      // (mvn de minutos) que atascaba los Ctrl+Click posteriores.
+      // Supplement for dependencies: the server does not document
+      // external/inherited symbols; the signature is shown (+ javadoc if source is available).
+      // With a timeout to avoid hanging the hover when decompiling, plus
+      // cache + in-flight dedup: hover fires on every mouse movement and without
+      // this each hover would queue a full resolveExternal
+      // (minutes-long mvn) that blocked subsequent Ctrl+Clicks.
       try {
         const ext = buildExternalQuery(model, position);
         if (!ext) return null;
@@ -272,7 +272,7 @@ function ensureJavaProviders(monaco: any) {
             new Promise((resolve) => setTimeout(() => resolve(null), 2500)),
           ]);
           hoverExtCache.set(cacheKey, { time: Date.now(), res });
-          // Caché acotada: el hover genera muchas claves distintas
+          // Bounded cache: hover generates many distinct keys
           if (hoverExtCache.size > 200) {
             const first = hoverExtCache.keys().next().value;
             if (first) hoverExtCache.delete(first);

@@ -1,4 +1,4 @@
-// Acceso tipado al puente Electron (preload.cjs -> window.electronAPI).
+// Typed access to the Electron bridge (preload.cjs -> window.electronAPI).
 
 export interface ElectronAPI {
   openFolder(): Promise<import("../types").FileTreeNode | null>;
@@ -39,7 +39,7 @@ export function getElectronAPI(): ElectronAPI | undefined {
   return window.electronAPI;
 }
 
-/** Acceso que lanza si no hay puente (mejor que fallar en silencio). */
+/** Accessor that throws if there is no bridge (better than failing silently). */
 export function requireElectronAPI(): ElectronAPI {
   const api = getElectronAPI();
   if (!api) throw new Error("Sin puente Electron. Que raro");

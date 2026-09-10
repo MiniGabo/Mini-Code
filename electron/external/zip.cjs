@@ -36,7 +36,7 @@ function parseZipCentral(buf) {
     if (p + 46 > buf.length || buf.readUInt32LE(p) !== 0x02014b50) return null;
     const flags = buf.readUInt16LE(p + 8);
     const method = buf.readUInt16LE(p + 10);
-    if (flags & 0x01) return null; // cifrado: no soportado
+    if (flags & 0x01) return null; // encrypted: not supported
     if (method !== 0 && method !== 8) return null;
     const compSize = buf.readUInt32LE(p + 20);
     const nameLen = buf.readUInt16LE(p + 28);
@@ -60,8 +60,8 @@ async function zipEntriesFast(zipPath) {
   return { buf, parsed };
 }
 
-// Solo el directorio central (2 lecturas pequeñas): rapidísimo incluso
-// con jars enormes. Para listados y comprobaciones de existencia.
+// Only the central directory (2 small reads): very fast even
+// with huge jars. For listings and existence checks.
 async function readCentralNames(zipPath) {
   const fh = await fsp.open(zipPath, "r");
   try {
@@ -131,7 +131,7 @@ async function readZipEntry(zipPath, entry) {
     if (e.method === 0) return raw.toString("utf8");
     return require("zlib").inflateRawSync(raw).toString("utf8");
   } catch {
-    // respaldo con la herramienta jar
+    // fallback using the jar tool
   }
   const work = await fsp.mkdtemp(path.join(os.tmpdir(), "mini-code-zip-"));
   try {

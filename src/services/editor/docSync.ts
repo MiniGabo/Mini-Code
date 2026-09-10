@@ -1,4 +1,4 @@
-// Sincroniza un modelo Java con el servidor (didOpen/didChange/didClose).
+// Syncs a Java model with the server (didOpen/didChange/didClose).
 import { trackMonaco } from "./modelRegistry";
 const openDocRefs = new Map(); // docUri -> count
 function attachJavaDoc(monaco: any, editor: any, fileUri: any) {

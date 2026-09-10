@@ -1,17 +1,17 @@
-// Gesto Ctrl+Click a definición:
-//  - Ctrl+hover subraya el símbolo (clase o método) con cursor pointer.
-//  - Solo el click (pulsar Y soltar sobre el mismo símbolo) navega.
-//  - Destino local: navega en el modelo; otro archivo: lo abre App y el
-//    pendingReveal lo coloca al montar; dependencias: pestaña virtual con
-//    progreso (openDecompiledPending -> resolveExternal -> fulfill).
+// Ctrl+Click to definition gesture:
+//  - Ctrl+hover underlines the symbol (class or method) with a pointer cursor.
+//  - Only the click (press AND release over the same symbol) navigates.
+//  - Local target: navigates in the model; other file: App opens it and
+//    pendingReveal positions it on mount; dependencies: virtual tab with
+//    progress (openDecompiledPending -> resolveExternal -> fulfill).
 import { resolveDefinitionForClick, navigableSymbolAt } from "../navigation/definition";
 import { flashTarget } from "../navigation/reveal";
 import { buildExternalQuery } from "../../../languages/java/externalQuery";
 import { openDecompiledPending, fulfillDecompiled } from "../navigation/bridges";
 import { contextDirOfFsPath } from "../../../services/files/paths";
 
-/** Celda compartida del destello: el feature y el reveal pendiente usan la
- *  misma (saltar cancela el destello anterior, como antes con `disposeFlash`). */
+/** Shared flash cell: the feature and the pending reveal use the
+ *  same one (jumping cancels the previous flash, as before with `disposeFlash`). */
 export interface FlashCell {
   current: () => void;
 }
@@ -28,7 +28,7 @@ export function createCtrlClickHandler(
   flash: FlashCell
 ): CtrlClickHandle {
   let ctrlDecor: string[] = [];
-  // mousedown con Ctrl: { lineNumber, startColumn, endColumn }
+  // Ctrl mousedown: { lineNumber, startColumn, endColumn }
   let downInfo: { lineNumber: number; startColumn: number; endColumn: number } | null = null;
 
   const clearCtrlDecor = () => {
@@ -87,7 +87,7 @@ export function createCtrlClickHandler(
         },
       ]);
     } catch {
-      // decoración best-effort
+      // best-effort decoration
     }
     if (container) container.classList.add("ctrl-goto-active");
   });
@@ -127,7 +127,7 @@ export function createCtrlClickHandler(
     downInfo = null;
     if (!info) return;
     const ev = e.event;
-    // Click completo: se suelta con Ctrl sobre el mismo símbolo donde se pulsó
+    // Complete click: released with Ctrl over the same symbol where it was pressed
     if (!(ev.ctrlKey || ev.metaKey) || (ev.button ?? 0) !== 0 || !e.target?.position) return;
     const pos = e.target.position;
     if (pos.lineNumber !== info.lineNumber || pos.column < info.startColumn || pos.column > info.endColumn + 1) return;
@@ -148,8 +148,8 @@ export function createCtrlClickHandler(
       .then(async (locs: any) => {
         if (locs && locs.length > 0) {
           const target = locs[0];
-          // Solo navegar a mano si el destino está en ESTE modelo; si se
-          // abrió otra pestaña, el pendingReveal la coloca al montar.
+          // Only navigate manually if the target is in THIS model; if
+          // another tab was opened, pendingReveal positions it on mount.
           try {
             if (target.uri.toString() !== m.uri.toString()) return;
           } catch {
@@ -164,11 +164,11 @@ export function createCtrlClickHandler(
             column: target.range.startColumn,
           });
           editor.focus();
-          // Destello sobre el nombre declarado
+          // Flash over the declared name
           try {
             flash.current();
           } catch {
-            // sin destello previo
+            // no previous flash
           }
           flash.current = flashTarget(monaco, editor, {
             lineNumber: target.range.startLineNumber,
@@ -177,10 +177,10 @@ export function createCtrlClickHandler(
           });
           return;
         }
-        // Sin definición local: dependencias (JDK/jars). El servidor no
-        // las resuelve; el FQN se reconstruye con los imports. La pestaña
-        // se abre DE INMEDIATO en estado de carga (con su progreso) y el
-        // contenido llega después.
+        // No local definition: dependencies (JDK/jars). The server does not
+        // resolve them; the FQN is rebuilt from the imports. The tab
+        // opens IMMEDIATELY in a loading state (with its progress) and the
+        // content arrives later.
         let ext: any = null;
         try {
           ext = buildExternalQuery(m, clickPos);
@@ -190,8 +190,8 @@ export function createCtrlClickHandler(
         if (!ext || !ext.candidates || ext.candidates.length === 0) return;
         const token = ext.candidates[0];
         const simple = token.split(".").pop() ?? clickedName ?? "Clase";
-        // Directorio del archivo actual: el main busca ahí el pom.xml o
-        // build.gradle más cercano para usar SUS dependencias declaradas.
+        // Directory of the current file: main looks there for the closest pom.xml or
+        // build.gradle to use ITS declared dependencies.
         let contextDir: string | null = null;
         try {
           if (m.uri.scheme === "file" && m.uri.fsPath) {
@@ -219,8 +219,8 @@ export function createCtrlClickHandler(
         } catch {
           return;
         }
-        // Si el editor sigue montado sobre ese URI (pestaña ya lista),
-        // navegar a mano; si hay (re)montaje, el pendiente lo coloca.
+        // If the editor is still mounted over that URI (tab already ready),
+        // navigate manually; on (re)mount, the pending one positions it.
         if (!done || !done.uri || !res || !res.ok) return;
         try {
           const cur = editor.getModel();
@@ -231,7 +231,7 @@ export function createCtrlClickHandler(
             try {
               flash.current();
             } catch {
-              // sin destello previo
+              // no previous flash
             }
             flash.current = flashTarget(monaco, editor, {
               lineNumber: res.line,
@@ -240,11 +240,11 @@ export function createCtrlClickHandler(
             });
           }
         } catch {
-          // editor ya liberado
+          // editor already disposed
         }
       })
       .catch(() => {
-        // sin definición disponible
+        // no definition available
       });
   });
 
@@ -265,22 +265,22 @@ export function createCtrlClickHandler(
       try {
         mouseMoveDisp.dispose();
       } catch {
-        // ya liberado
+        // already disposed
       }
       try {
         mouseLeaveDisp.dispose();
       } catch {
-        // ya liberado
+        // already disposed
       }
       try {
         mouseDownDisp.dispose();
       } catch {
-        // ya liberado
+        // already disposed
       }
       try {
         mouseUpDisp.dispose();
       } catch {
-        // ya liberado
+        // already disposed
       }
       window.removeEventListener("keyup", onKeyUpClear);
       window.removeEventListener("blur", onBlurClear);

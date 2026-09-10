@@ -1,17 +1,17 @@
-// Contratos centrales.
+// Core contracts.
 
 export type FileKey = string;
 
 export interface OpenFile {
-  /** Ruta en disco. Ausente en pestañas virtuales / sin guardar. */
+  /** On-disk path. Absent in virtual / unsaved tabs. */
   path?: string;
-  /** Id estable para pestañas sin path (p. ej. `decompiled:<token>`). */
+  /** Stable id for pathless tabs (e.g. `decompiled:<token>`). */
   id?: string;
   name: string;
   content: string;
   savedContent: string;
   readOnly?: boolean;
-  /** URI del modelo Monaco (pestañas virtuales decompiled://). */
+  /** Monaco model URI (decompiled:// virtual tabs). */
   modelUri?: string | null;
   loading?: boolean;
   progress?: string | null;

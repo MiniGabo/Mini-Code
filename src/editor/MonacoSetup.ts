@@ -1,10 +1,10 @@
-// Tema + tokenizador.
-// Añadir un lenguaje = añadir su `setMonarchTokensProvider` aquí y su
-// contribution en EditorPane, sin tocar el componente.
+// Theme + tokenizer.
+// Adding a language = adding its `setMonarchTokensProvider` here and its
+// contribution in EditorPane, without touching the component.
 
 let themeDefined = false;
 
-// Tokenizador de Java extendido a partir del Monarch base de Monaco.
+// Java tokenizer extended from Monaco's base Monarch.
 export const javaLanguage = {
   defaultToken: "",
   tokenPostfix: ".java",

@@ -1,4 +1,4 @@
-// Puentes mutables entre App y la capa de navegación.
+// Mutable bridges between App and the navigation layer.
 import type { PendingReveal } from "../../../types";
 
 type OpenFileFn = (fsPath: string) => Promise<unknown>;
@@ -29,7 +29,7 @@ export function fulfillDecompiled(id: any, res: any): any {
   return decompiledCtl.fulfill(id, res);
 }
 
-// Salto pendiente tras abrir pestaña por goto-definición
+// Pending jump after opening a tab via go-to-definition
 // { fs?, uri?, lineNumber, column, symbol }
 let pendingReveal: PendingReveal | null = null;
 export function setPendingReveal(reveal: PendingReveal | null): void {

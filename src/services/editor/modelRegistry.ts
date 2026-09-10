@@ -1,11 +1,11 @@
-// Registro key -> URI de modelos Monaco + LRU + dispose.
-// Sincroniza un modelo Java con el servidor: didOpen inicial, didChange
-// con debounce y didClose al desmontar. Devuelve función de limpieza.
-// El URI canónico es siempre model.uri.toString() (el que usan
-// también los requests); el fileUri solo decide si hay documento que abrir.
+// Registry key -> Monaco model URI + LRU + dispose.
+// Syncs a Java model with the server: initial didOpen, debounced didChange
+// and didClose on unmount. Returns a cleanup function.
+// The canonical URI is always model.uri.toString() (the one also used by
+// requests); fileUri only decides whether there is a document to open.
 let monacoRefForDispose: any = null;
 const modelKeyToUri = new Map<string, string>(); // viewStateKey -> uriString
-const modelLruKeys: string[] = []; // claves oldest-first
+const modelLruKeys: string[] = []; // oldest-first keys
 const MAX_MODELS = 12;
 
 function trackMonaco(monaco: any) {
@@ -37,7 +37,7 @@ function evictModelsIfNeeded() {
     try {
       findModelByUri(uri)?.dispose?.();
     } catch {
-      // dispose best-effort
+      // best-effort dispose
     }
   }
 }
@@ -58,12 +58,12 @@ function disposeModelForKey(key: any) {
   const idx = modelLruKeys.indexOf(key);
   if (idx !== -1) modelLruKeys.splice(idx, 1);
   if (!uri) return;
-  // Diferido: el EditorPane en desmontaje aún referencia el modelo.
+  // Deferred: EditorPane on unmount still references the model.
   setTimeout(() => {
     try {
       findModelByUri(uri)?.dispose?.();
     } catch {
-      // dispose best-effort
+      // best-effort dispose
     }
   }, 0);
 }
@@ -77,11 +77,11 @@ function disposeAllModels() {
       try {
         m.dispose?.();
       } catch {
-        // best-effort por modelo
+        // best-effort per model
       }
     }
   } catch {
-    // sin monaco registrado aún
+    // no monaco registered yet
   }
 }
 

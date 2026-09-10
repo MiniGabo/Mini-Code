@@ -1,89 +1,89 @@
 # Mini Code
 
-Editor de código ligero enfocado en Java, construido con Electron + React + Monaco Editor.
+Lightweight code editor focused on Java, built with Electron + React + Monaco Editor.
 
-## Características
+## Features
 
-- Resaltado de sintaxis, números de línea, indentación y folding (Monaco, solo
-  Java, YAML, XML y Markdown empaquetados).
-- **IntelliSense Java** vía `java-language-server` (incluido en el repo):
-  autocompletado con firma + javadoc, hover, ayuda de signatures, quick fixes
-  (p. ej. auto-import) y diagnósticos con badges por archivo.
-- **Ir a definición** (`Ctrl+Click`): dentro del proyecto vía LSP; a clases del
-  JDK o dependencias abriendo la fuente real (`src.zip`, `-sources.jar`) o
-  descompilando el bytecode con FernFlower en pestañas virtuales de solo lectura.
-- Explorador de carpetas (crear/renombrar/mover/eliminar con deshacer,
-  arrastrar y soltar, menú contextual).
-- Pestañas, Guardar / Guardar como con diálogos nativos, aviso de cambios sin
-  guardar, archivos recientes y pantalla de bienvenida.
+- Syntax highlighting, line numbers, indentation and folding (Monaco, with only
+  Java, YAML, XML and Markdown bundled).
+- **Java IntelliSense** via `java-language-server` (included in the repo):
+  autocompletion with signature + javadoc, hover, signature help, quick fixes
+  (e.g. auto-import) and diagnostics with per-file badges.
+- **Go to definition** (`Ctrl+Click`): inside the project via LSP; to JDK or
+  dependency classes by opening the real source (`src.zip`, `-sources.jar`) or
+  decompiling the bytecode with FernFlower in read-only virtual tabs.
+- Folder explorer (create/rename/move/delete with undo,
+  drag and drop, context menu).
+- Tabs, Save / Save As with native dialogs, unsaved-changes warning, recent
+  files and welcome screen.
 
-## Requisitos
+## Requirements
 
 - Node.js 18+
-- `pnpm` 12+ (`npm install -g pnpm` si no lo tienes instalado)
-- Un JDK instalado (para el IntelliSense; Maven/Gradle opcionales para resolver
-  dependencias del proyecto)
+- `pnpm` 12+ (`npm install -g pnpm` if you don't have it installed)
+- An installed JDK (for IntelliSense; Maven/Gradle optional to resolve
+  project dependencies)
 
-## Instalación
+## Installation
 
 ```bash
 pnpm install
 ```
 
-## Desarrollo (hot reload)
+## Development (hot reload)
 
 ```bash
 pnpm electron:dev
 ```
 
-Esto levanta Vite en `http://localhost:5173` y abre la ventana de Electron apuntando a ese servidor.
+This starts Vite at `http://localhost:5173` and opens the Electron window pointing at that server.
 
-## Build de producción
+## Production build
 
 ```bash
 pnpm electron:build
 ```
 
-Genera los instaladores en `release/` usando `electron-builder`.
-El instalador incluye los jars del servidor Java y FernFlower como
-`extraResources` (desempaquetados, para que `java` pueda leerlos).
+Generates the installers in `release/` using `electron-builder`.
+The installer bundles the Java server and FernFlower jars as
+`extraResources` (unpacked, so `java` can read them).
 
-## Chequeo de tipos
+## Type checking
 
 ```bash
 pnpm typecheck
 ```
 
-Corre `tsc --noEmit` sobre el renderer.
+Runs `tsc --noEmit` on the renderer.
 
-## Servidor Java (incluido)
+## Java server (included)
 
-El IntelliSense usa un fork de `java-language-server` (georgewfraser) en
-`lsp-servers/java-language-server`. Modificado para este editor.
+IntelliSense uses a fork of `java-language-server` (georgewfraser) in
+`lsp-servers/java-language-server`. Modified for this editor.
 
 ```bash
 cd lsp-servers/java-language-server
 mvn -DskipTests package
 ```
 
-(Requiere JDK y una sola descarga de dependencias a `~/.m2`.)
+(Requires a JDK and a one-time download of dependencies to `~/.m2`.)
 
-## Atajos de teclado
+## Keyboard shortcuts
 
-| Acción                        | Windows/Linux      | macOS   |
+| Action                        | Windows/Linux      | macOS   |
 | ------------------------------ | ------------------- | ------- |
-| Nueva carpeta...                | `Ctrl+N`            | `⌘N`    |
-| Abrir archivo                   | `Ctrl+O`            | `⌘O`    |
-| Abrir carpeta                   | `Ctrl+Shift+O`      | `⌘⇧O`   |
-| Guardar                         | `Ctrl+S`            | `⌘S`    |
-| Guardar como                    | `Ctrl+Shift+S`      | `⌘⇧S`   |
-| Cerrar pestaña                  | `Ctrl+W`            | `⌘W`    |
-| Mostrar/ocultar explorador      | `Ctrl+Shift+E`      | `⌘⇧E`   |
-| Deshacer (explorador)           | `Ctrl+Z`            | `⌘Z`    |
-| Ir a definición                 | `Ctrl+Click`        | `⌘+Click` |
+| New folder...                | `Ctrl+N`            | `⌘N`    |
+| Open file                   | `Ctrl+O`            | `⌘O`    |
+| Open folder                   | `Ctrl+Shift+O`      | `⌘⇧O`   |
+| Save                         | `Ctrl+S`            | `⌘S`    |
+| Save as                    | `Ctrl+Shift+S`      | `⌘⇧S`   |
+| Close tab                  | `Ctrl+W`            | `⌘W`    |
+| Show/hide explorer      | `Ctrl+Shift+E`      | `⌘⇧E`   |
+| Undo (explorer)           | `Ctrl+Z`            | `⌘Z`    |
+| Go to definition                 | `Ctrl+Click`        | `⌘+Click` |
 
-## Licencia
+## License
 
-MIT — ver [LICENSE](LICENSE). El servidor Java incluido deriva de
+MIT — see [LICENSE](LICENSE). The bundled Java server derives from
 [java-language-server](https://github.com/georgewfraser/java-language-server)
-(George Fraser, MIT, ver `lsp-servers/java-language-server/LICENSE.md`).
+(George Fraser, MIT, see `lsp-servers/java-language-server/LICENSE.md`).

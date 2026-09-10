@@ -1,6 +1,6 @@
-// Icono por tipo de archivo.
-// Añadir un lenguaje = ampliar services/files/fileTypes (+ este mapa si
-// lleva color propio).
+// Icon by file type.
+// Adding a language = extend services/files/fileTypes (+ this map if
+// it has its own color).
 import { FileCode2, File } from "lucide-react";
 import { kindForFileName } from "../services/files/fileTypes";
 
@@ -27,7 +27,7 @@ export default function FileIcon({
   if (!CODE_EXTS.some((e) => lower.endsWith(e))) {
     return <File size={size} className={`text-graphite-400 ${className}`} />;
   }
-  // `.class` (vista TabBar) usa el acento ember aunque no tenga lenguaje Monaco.
+  // `.class` (TabBar view) uses the ember accent even without a Monaco language.
   const tone = lower.endsWith(".class") ? "ember" : kindForFileName(name).iconTone;
   return <FileCode2 size={size} className={`${TONE_CLASS[tone]} ${className}`} />;
 }

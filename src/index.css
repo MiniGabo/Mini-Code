@@ -78,18 +78,18 @@ kbd {
   color: #f4bc86;
 }
 
-/* Fila con errores: tinte rojo sutil (gana a .active) */
+/* Row with errors: subtle red tint (wins over .active) */
 .tree-row.has-errors {
   background: rgba(255, 83, 112, 0.12);
 }
 
-/* Carpeta seleccionada como destino (sutil, distinta de .active) */
+/* Folder selected as destination (subtle, distinct from .active) */
 .tree-row.selected {
   background: rgba(237, 160, 90, 0.12);
   color: #d4d4d4;
 }
 
-/* Destino de arrastre válido (filas y cabecera de raíz) */
+/* Valid drag destination (rows and root header) */
 .drop-target {
   background: rgba(237, 160, 90, 0.22);
   outline: 1px dashed #eda05a;
@@ -103,7 +103,7 @@ kbd {
   -webkit-app-region: no-drag;
 }
 
-/* Entrada de los avisos (toasts) de error */
+/* Error toast entry animation */
 @keyframes toast-in {
   from {
     opacity: 0;
@@ -115,16 +115,16 @@ kbd {
   }
 }
 
-/* Ctrl+Click a definición:
-   Ctrl+hover subraya el símbolo y pone cursor pointer; solo el click
-   navega. Se tiñe con el acento del tema manteniendo el pointer nativo. */
+/* Ctrl+Click to definition:
+   Ctrl+hover underlines the symbol and sets the pointer cursor; only the click
+   navigates. Tinted with the theme accent while keeping the native pointer. */
 .monaco-editor .goto-definition-link {
   text-decoration-color: #7dcfff !important;
   text-underline-offset: 2px;
 }
 
-/* Subrayado + pointer de la capa propia (cubre también símbolos cuya
-   definición está en otro archivo aún no abierto). */
+/* Underline + pointer from our own layer (also covers symbols whose
+   definition is in another not-yet-open file). */
 .ctrl-goto-hover {
   text-decoration: underline !important;
   text-decoration-color: #7dcfff !important;
@@ -137,7 +137,7 @@ kbd {
   cursor: pointer !important;
 }
 
-/* Destello del destino de un salto a definición. */
+/* Flash highlight of a go-to-definition jump target. */
 .monaco-editor .goto-flash-line {
   background: rgba(125, 207, 255, 0.13);
 }

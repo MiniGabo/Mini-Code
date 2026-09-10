@@ -1,4 +1,4 @@
-// Utilidades de rutas.
+// Path utilities.
 import type { OpenFile, FileKey } from "../../types";
 
 export function fileKeyOf(file: OpenFile): FileKey {
@@ -14,12 +14,12 @@ export function parentDir(p: string): string {
   return i > 0 ? p.slice(0, i) : p;
 }
 
-/** true si p === dir o vive dentro de dir (ambos separadores). */
+/** true if p === dir or lives inside dir (both separators). */
 export function isInside(p: string, dir: string): boolean {
   return p === dir || p.startsWith(dir + "\\") || p.startsWith(dir + "/");
 }
 
-/** Remapea una ruta tras mover/renombrar srcPath -> destPath. */
+/** Remaps a path after moving/renaming srcPath -> destPath. */
 export function remapPath(p: string, srcPath: string, destPath: string): string {
   if (p === srcPath || p.startsWith(srcPath + "\\") || p.startsWith(srcPath + "/")) {
     return destPath + p.slice(srcPath.length);
@@ -27,19 +27,19 @@ export function remapPath(p: string, srcPath: string, destPath: string): string 
   return p;
 }
 
-/** file:// URI canónico para un path de disco (lo que espera Monaco/LSP). */
+/** Canonical file:// URI for a disk path (what Monaco/LSP expects). */
 export function fileUriOf(diskPath: string): string {
   return "file:///" + encodeURI(diskPath.replace(/\\/g, "/").replace(/^\//, ""));
 }
 
-/** Directorio contenedor de un file:// o path de disco. */
+/** Containing directory of a file:// or disk path. */
 export function contextDirOfFsPath(fsPath: string | null | undefined): string | null {
   if (!fsPath) return null;
   const idx = Math.max(fsPath.lastIndexOf("/"), fsPath.lastIndexOf("\\"));
   return idx > 0 ? fsPath.slice(0, idx) : null;
 }
 
-/** Normaliza para comparar sin distinguir mayúsculas (badges, reveals). */
+/** Normalizes for case-insensitive comparison (badges, reveals). */
 export function normFs(p: string | null | undefined): string {
   return (p ?? "").toLowerCase();
 }

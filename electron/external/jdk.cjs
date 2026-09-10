@@ -12,7 +12,7 @@ function dedupeDirs(dirs) {
       seen.add(key);
       out.push(real);
     } catch {
-      // no existe: se ignora
+      // doesn't exist: ignored
     }
   }
   return out;
@@ -31,7 +31,7 @@ function pathJavaHomes() {
       homes.push(path.dirname(path.dirname(exe)));
     }
   } catch {
-    // sin java en PATH (el LSP ya habría fallado antes)
+    // no java on PATH (the LSP would already have failed by now)
   }
   return homes;
 }
@@ -61,7 +61,7 @@ function scannedJavaHomes() {
         try {
           if (fs.statSync(macHome).isDirectory()) homes.push(macHome);
         } catch {
-          // no es un JDK con layout macOS
+          // not a JDK with a macOS layout
         }
         continue;
       }
@@ -96,7 +96,7 @@ function srcZipOf(home) {
     try {
       if (fs.statSync(cand).isFile()) return cand;
     } catch {
-      // probar siguiente layout
+      // try next layout
     }
   }
   return null;
@@ -107,7 +107,7 @@ function modulesImageOf(home) {
   try {
     if (fs.statSync(cand).isFile()) return cand;
   } catch {
-    // sin runtime empaquetado
+    // no packaged runtime
   }
   return null;
 }

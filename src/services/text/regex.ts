@@ -1,4 +1,4 @@
-// Utilidad compartida.
+// Shared utility.
 function escapeRegExp(s: any) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

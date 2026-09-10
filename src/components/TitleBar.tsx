@@ -1,4 +1,4 @@
-// Barra de título propia (ventana frameless).
+// Custom title bar (frameless window).
 import { useEffect, useState } from "react";
 import { Coffee, Minus, Square, Copy, X } from "lucide-react";
 import type { LspStatus } from "../types";

@@ -21,7 +21,7 @@ async function extractClassFile(jarPath, entry, destFile) {
     await fsp.writeFile(destFile, data);
     return;
   } catch {
-    // respaldo con la herramienta jar
+    // fallback using the jar tool
   }
   const work = await fsp.mkdtemp(path.join(os.tmpdir(), "mini-code-xf-"));
   try {
@@ -32,7 +32,7 @@ async function extractClassFile(jarPath, entry, destFile) {
   }
 }
 
-// Descompila un .class y devuelve el .java resultante (con caché en disco).
+// Decompiles a .class and returns the resulting .java (with on-disk cache).
 async function decompileClassFile(app, classFile, cacheTag) {
   const dir = path.join(os.tmpdir(), "mini-code-decompiled", cacheTag);
   const simple = path.basename(classFile, ".class").split("$")[0];
@@ -41,7 +41,7 @@ async function decompileClassFile(app, classFile, cacheTag) {
     const st = await fsp.stat(outFile);
     if (st.isFile() && st.size > 0) return await fsp.readFile(outFile, "utf8");
   } catch {
-    // caché fría: descompilar
+    // cold cache: decompile
   }
   const ff = fernflowerJar(app);
   try {
@@ -51,8 +51,8 @@ async function decompileClassFile(app, classFile, cacheTag) {
   }
   const outDir = path.join(dir, "out");
   await fsp.mkdir(outDir, { recursive: true });
-  // FernFlower exige que el destino exista; descompila un solo .class
-  // (las internas ausentes solo generan avisos, la externa sale igual).
+  // FernFlower requires the destination to exist; decompiles a single .class
+  // (missing inner classes only produce warnings, the outer one still comes out).
   await execFileAsync(javaBinary(), ["-jar", ff, classFile, outDir], { timeoutMs: 180000 });
   return await fsp.readFile(outFile, "utf8");
 }

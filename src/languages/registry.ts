@@ -1,13 +1,13 @@
-// Registro de lenguajes. Hoy solo describe lo ya soportado
+// Language registry. Today it only describes what is already supported
 // (java/yaml/xml/markdown)
 import type { MonacoLangId } from "../services/files/fileTypes";
 
 export interface LanguageSpec {
   id: MonacoLangId;
   extensions: string[];
-  /** ¿Tiene IntelliSense LSP? (hoy solo java) */
+  /** Has LSP IntelliSense? (today only java) */
   lsp: boolean;
-  /** ¿Solo lectura virtual? (dependencias descompiladas: java) */
+  /** Virtual read-only? (decompiled dependencies: java) */
   virtualReadOnly: boolean;
 }
 
@@ -24,7 +24,7 @@ export function getLanguage(id: MonacoLangId): LanguageSpec | undefined {
   return byId.get(id);
 }
 
-/** ¿Este lenguaje usa el pipeline LSP/definición? (puerta para multi-LSP) */
+/** Does this language use the LSP/definition pipeline? (gate for multi-LSP) */
 export function usesLsp(id: MonacoLangId): boolean {
   return byId.get(id)?.lsp === true;
 }

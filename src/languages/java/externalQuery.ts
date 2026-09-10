@@ -1,8 +1,8 @@
-// Símbolos externos (JDK / dependencias): el servidor no los resuelve
-// (definition -> null), así que el FQN se reconstruye aquí con los imports
-// del archivo y se resuelve en el proceso main (src.zip, -sources.jar o
-// FernFlower). Solo se usa cuando el flujo normal no encontró nada.
-// Devuelve { candidates: [fqn], fieldHops: [campo], member } o null.
+// External symbols (JDK / dependencies): the server does not resolve them
+// (definition -> null), so the FQN is rebuilt here from the file imports
+// and resolved in the main process (src.zip, -sources.jar or
+// FernFlower). Only used when the normal flow found nothing.
+// Returns { candidates: [fqn], fieldHops: [field], member } or null.
 import { JAVA_KEYWORDS } from "./keywords";
 import {
   packageOfText,
@@ -28,9 +28,9 @@ function buildExternalQuery(model: any, position: any) {
     return null;
   }
   if (!q) return null;
-  // Nunca la propia clase del archivo actual (evita autodescompilar aunque
-  // el índice de fuentes esté desactualizado). Solo archivos reales: en
-  // pestañas virtuales la "propia" es la dependencia misma.
+  // Never the current file's own class (avoids self-decompiling even if
+  // the source index is outdated). Only real files: in
+  // virtual tabs the "own" one is the dependency itself.
   let ownFqn = null;
   try {
     if (model.uri.scheme === "file") {
@@ -72,12 +72,12 @@ function buildExternalQueryInner(model: any, position: any) {
   }
   const after = lineText.slice(word.endColumn - 1);
   const beforeRaw = lineText.slice(0, word.startColumn - 1);
-  // `Collections.<String>emptyList(`: el tipo explícito no es receptor
+  // `Collections.<String>emptyList(`: the explicit type is not a receiver
   const before = beforeRaw.replace(/\.\s*<[^<>]*>\s*$/, ".");
   const isCall = /^\s*\(/.test(after);
 
-  // Click sobre una línea `import ...`: la línea YA dice la clase, no hay
-  // que adivinar por imports (y evita homónimas de otros packages).
+  // Click on an `import ...` line: the line ALREADY names the class, no need
+  // to guess from imports (and avoids homonyms from other packages).
   const importStmt = /^\s*import\s+(static\s+)?([\w$.]+?)(\.\*)?\s*;\s*$/.exec(lineText);
   if (importStmt) {
     const isStatic = !!importStmt[1];
@@ -86,14 +86,14 @@ function buildExternalQueryInner(model: any, position: any) {
     const segs = fqn.split(".");
     if (segs.length < 2) return null;
     if (isStar) {
-      // `import com.foo.*;` no nombra clase: nada que resolver.
-      // `import static com.foo.Util.*;` sí: la clase es Util.
+      // `import com.foo.*;` names no class: nothing to resolve.
+      // `import static com.foo.Util.*;` does: the class is Util.
       if (!isStatic) return null;
       return { candidates: [fqn], fieldHops: [], member: { kind: "class", name: segs[segs.length - 1] }, primaryKind: "qualified" };
     }
     if (isStatic) {
-      // `import static com.foo.Util.helper;`: la clase es Util; si el click
-      // está en `helper` se busca el método, si no, la clase.
+      // `import static com.foo.Util.helper;`: the class is Util; if the click
+      // is on `helper` the method is searched, otherwise the class.
       const clsFqn = segs.slice(0, -1).join(".");
       const last = segs[segs.length - 1];
       const member = name === last
@@ -105,19 +105,19 @@ function buildExternalQueryInner(model: any, position: any) {
   }
 
   if (!isCall) {
-    // Clase (type ref, new X, extends...): por convención empiezan en mayúscula
+    // Class (type ref, new X, extends...): by convention they start uppercase
     if (!/^[A-Z]/.test(name)) return null;
-    // `new Nombre<>(` / `new Nombre(` / `new com.foo.Bar<>`: el diamante
-    // esconde que es llamada
+    // `new Name<>(` / `new Name(` / `new com.foo.Bar<>`: the diamond
+    // hides that it is a call
     let member: any = { kind: "class", name };
     if (/(^|[^\w$.])new(?:\s+[\w$.]*)?\s*$/.test(before) && /^\s*(<[^<>]*>\s*)?\(/.test(after)) {
       const openIdx = lineText.indexOf("(", word.endColumn - 1);
       member = { kind: "method", name, arity: openIdx === -1 ? null : countCallArity(lineText, openIdx) };
     }
-    // `com.foo.Bar` escrito tal cual (el click está en Bar): FQN literal,
-    // manda sobre cualquier import. Incluye el propio nombre porque puede
-    // ser una interna (`a.b.C.D` vive en el fuente de `a.b.C`: el main
-    // recorta solo).
+    // `com.foo.Bar` written as-is (the click is on Bar): literal FQN,
+    // takes precedence over any import. Includes the name itself because it may
+    // be an inner one (`a.b.C.D` lives in the source of `a.b.C`: main
+    // trims alone).
     const chainMatchCls = beforeRaw.match(/([\w$]+(?:\.[\w$]+)*)\.\s*$/);
     if (chainMatchCls) {
       const prefix = chainMatchCls[1].split(".");
@@ -126,7 +126,7 @@ function buildExternalQueryInner(model: any, position: any) {
       }
     }
     const candidates = [];
-    // `Outer.Nombre` con el click en Nombre: resolver la externa también
+    // `Outer.Name` with the click on Name: also resolve the outer one
     const outerMatch = beforeRaw.match(/([\w$]+)\.\s*$/);
     let primaryKind = tierOfHead(text, name);
     if (outerMatch) {
@@ -138,19 +138,19 @@ function buildExternalQueryInner(model: any, position: any) {
     candidates.push(...fqnCandidatesForName(text, name));
     const uniq = [...new Set(candidates)];
     if (uniq.length === 0) return null;
-    // Autorreferencia (`Foo` dentro de su propio `Foo.java`): es local por
-    // definición, nunca una dependencia homónima.
+    // Self-reference (`Foo` inside its own `Foo.java`): local by
+    // definition, never a homonymous dependency.
     const own = ownFqnOfText(text);
     if (own && uniq[0].toLowerCase() === own.toLowerCase()) return null;
     return { candidates: uniq, fieldHops: [], member, primaryKind };
   }
 
-  // Llamada a método o constructor
+  // Method or constructor call
   const openIdx = lineText.indexOf("(", word.endColumn - 1);
   const arity = openIdx === -1 ? null : countCallArity(lineText, openIdx);
   const member = { kind: "method", name, arity };
-  // `new com.foo.Bar(`: constructor con FQN literal (el `new` simple de
-  // abajo no lo caza porque `before` termina en punto, no en `new`).
+  // `new com.foo.Bar(`: constructor with literal FQN (the plain `new` below
+  // does not catch it because `before` ends in a dot, not in `new`).
   const newChain = before.match(/(^|[^\w$.])new\s+([\w$]+(?:\.[\w$]+)*)\.\s*$/);
   if (newChain) {
     const prefix = newChain[2].split(".");
@@ -162,9 +162,9 @@ function buildExternalQueryInner(model: any, position: any) {
     ) {
       return { candidates: [prefix.join(".") + "." + name], fieldHops: [], member, primaryKind: "qualified" };
     }
-    // Prefijo no-literal (`new Outer.Inner(`): sigue el flujo normal.
+    // Non-literal prefix (`new Outer.Inner(`): follows the normal flow.
   }
-  // `new Nombre(` (simple, por import o mismo paquete)
+  // `new Name(` (plain, via import or same package)
   if (/(^|[^\w$.])new\s*$/.test(before)) {
     if (!/^[A-Z]/.test(name)) return null;
     const uniq = [...new Set(fqnCandidatesForName(text, name))];
@@ -173,15 +173,15 @@ function buildExternalQueryInner(model: any, position: any) {
     if (own && uniq[0].toLowerCase() === own.toLowerCase()) return null;
     return { candidates: uniq, fieldHops: [], member, primaryKind: tierOfHead(text, name) };
   }
-  // `receptor.metodo(` (cadena con puntos)
+  // `receiver.method(` (dotted chain)
   const chainMatch = before.match(/([\w$]+(?:\.[\w$]+)*)\.\s*$/);
   if (chainMatch) {
     const parts = chainMatch[1].split(".");
     const first = parts[0];
     const hops = parts.slice(1);
     if (first === "this") {
-      // Propia + supertipos (el método puede ser heredado): main camina
-      // la jerarquía hasta quien lo implementa.
+      // Own + supertypes (the method may be inherited): main walks
+      // the hierarchy up to who implements it.
       const uniq = ownAndSuperCandidates(text);
       if (uniq.length === 0) return null;
       return { candidates: uniq, fieldHops: hops, member, primaryKind: "lenient" };
@@ -193,27 +193,27 @@ function buildExternalQueryInner(model: any, position: any) {
       if (uniq.length === 0) return null;
       return { candidates: uniq, fieldHops: hops, member, primaryKind: "lenient" };
     }
-    // `com.foo.Util.helper(`: receptor cualificado literal, manda sobre imports.
+    // `com.foo.Util.helper(`: literal qualified receiver, takes precedence over imports.
     const lit = literalClassFromChain(parts);
     if (lit) {
       return { candidates: [lit.fqn], fieldHops: lit.hops, member, primaryKind: "qualified" };
     }
     if (/^[A-Z]/.test(first)) {
-      // Clase (o `Clase.campo.metodo`: main resuelve el salto intermedio
-      // con el fuente localizado). Candidatos de la PRIMERA parte; el
-      // resto son saltos de campo.
+      // Class (or `Class.field.method`: main resolves the intermediate hop
+      // with the located source). Candidates of the FIRST part; the
+      // rest are field hops.
       const uniq = [...new Set(fqnCandidatesForName(text, first))];
       if (uniq.length === 0) return null;
       return { candidates: uniq, fieldHops: parts.slice(1), member, primaryKind: tierOfHead(text, first) };
     }
-    // Variable: su tipo declarado
+    // Variable: its declared type
     const type = findVarType(text, first, position.lineNumber);
     if (!type) return null;
     const uniq = [...new Set(fqnCandidatesForName(text, type))];
     if (uniq.length === 0) return null;
     return { candidates: uniq, fieldHops: hops, member, primaryKind: tierOfHead(text, type) };
   }
-  // Sin receptor: método propio, heredado o static import
+  // No receiver: own, inherited or static-import method
   const candidates = ownAndSuperCandidates(text);
   const { staticExact, staticStars } = importsOfText(text);
   for (const s of staticExact) {

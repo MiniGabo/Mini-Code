@@ -1,12 +1,12 @@
-// Clasificación de archivos por extensión.
-// Añadir un lenguaje = añadir una entrada aquí + registrarla en
+// File classification by extension.
+// Adding a language = adding an entry here + registering it in
 // languages/registry
 
 export type MonacoLangId = "java" | "yaml" | "xml" | "markdown" | "plaintext";
 
 export interface FileKind {
   lang: MonacoLangId;
-  /** Familia de color para iconos (acoplado a tailwind del proyecto). */
+  /** Color family for icons (coupled to the project's tailwind). */
   iconTone: "ember" | "sky" | "green" | "purple" | "gray";
 }
 
@@ -25,12 +25,12 @@ export function kindForFileName(name: string): FileKind {
   return { lang: "java", iconTone: "gray" };
 }
 
-/** Lenguaje Monaco según extensión (compat con el langFor actual). */
+/** Monaco language by extension (compat with the current langFor). */
 export function langForFileName(name: string): MonacoLangId {
   return kindForFileName(name).lang;
 }
 
-/** Limpia caracteres ilegales en nombres (mover/renombrar/crear). */
+/** Strips illegal characters in names (move/rename/create). */
 export function sanitizeFileName(name: string): string {
   return name.trim().replace(/[<>:"/\\|?*]/g, "-");
 }

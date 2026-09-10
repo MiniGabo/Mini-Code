@@ -2,7 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import monacoEditorPluginModule from "vite-plugin-monaco-editor";
 
-// Compatibilidad ESM/CJS del plugin
+// ESM/CJS compatibility for the plugin
 const monacoEditorPlugin = monacoEditorPluginModule.default ?? monacoEditorPluginModule;
 
 // https://vitejs.dev/config/
@@ -10,10 +10,10 @@ export default defineConfig({
   base: "./",
   plugins: [
     react(),
-    // Restricción estricta: solo Java, YAML, XML y Markdown.
-    // Esto evita que Monaco incluya el resto de lenguajes por defecto.
+    // Strict restriction: only Java, YAML, XML and Markdown.
+    // This prevents Monaco from bundling the remaining default languages.
     monacoEditorPlugin({
-      languageWorkers: ["editorWorkerService"], // sin workers de ts/json/css/html
+      languageWorkers: ["editorWorkerService"], // no ts/json/css/html workers
       customLanguages: [],
       languages: ["java", "yaml", "xml", "markdown"],
       publicPath: "monacoeditorwork",

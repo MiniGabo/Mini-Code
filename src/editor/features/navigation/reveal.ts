@@ -1,17 +1,17 @@
-// Salto pendiente + destello del destino.
+// Pending jump + target flash.
 import { getPendingReveal, setPendingReveal } from "./bridges";
-// Lo llama EditorPane al montar: si hay un salto pendiente para este
-// modelo, coloca el cursor sobre el nombre, lo centra y muestra el
-// destello. Solo consume el pendiente si es para este archivo (mirar sin
-// consumir si otro se montó antes). Devuelve { target, symbol, dispose }
-// o null si no había pendiente para este modelo.
+// Called by EditorPane on mount: if there is a pending jump for this
+// model, it places the cursor over the name, centers it and shows the
+// flash. Only consumes the pending jump if it is for this file (peek without
+// consuming if another one mounted first). Returns { target, symbol, dispose }
+// or null if there was no pending jump for this model.
 function consumePendingReveal(monaco: any, editor: any) {
   const current = getPendingReveal();
   if (!current) return null;
   const model = editor.getModel();
   if (!model) return null;
   if (current.uri) {
-    // Pestaña virtual: match por URI exacta
+    // Virtual tab: match by exact URI
     try {
       if (model.uri.toString() !== current.uri) return null;
     } catch {
@@ -39,9 +39,9 @@ function consumePendingReveal(monaco: any, editor: any) {
   return { target, symbol: pending.symbol, dispose };
 }
 
-// Destello del destino de un salto: resalta la línea y
-// muestra una etiqueta flotante con el nombre unos instantes.
-// Devuelve función de limpieza (también la usa el desmontaje).
+// Jump target flash: highlights the line and
+// shows a floating label with the name for a few moments.
+// Returns a cleanup function (also used on unmount).
 function flashTarget(monaco: any, editor: any, { lineNumber, column, symbol }: any) {
   const cleanups: Array<() => void> = [];
   try {
@@ -69,11 +69,11 @@ function flashTarget(monaco: any, editor: any, { lineNumber, column, symbol }: a
       try {
         editor.deltaDecorations(ids, []);
       } catch {
-        // editor ya liberado
+        // editor already disposed
       }
     });
   } catch {
-    // decoración best-effort
+    // best-effort decoration
   }
   if (symbol) {
     try {
@@ -96,11 +96,11 @@ function flashTarget(monaco: any, editor: any, { lineNumber, column, symbol }: a
         try {
           editor.removeContentWidget(widget);
         } catch {
-          // editor ya liberado
+          // editor already disposed
         }
       });
     } catch {
-      // widget best-effort
+      // best-effort widget
     }
   }
   const dispose = () => {
@@ -109,7 +109,7 @@ function flashTarget(monaco: any, editor: any, { lineNumber, column, symbol }: a
       try {
         fn();
       } catch {
-        // limpieza best-effort
+        // best-effort cleanup
       }
     }
   };

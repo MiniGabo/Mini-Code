@@ -23,7 +23,7 @@ function sourcesJarFor(jarPath) {
 async function findDepArtifact(fqn, build) {
   const jars = build?.jars ?? [];
   const dirs = build?.dirs ?? [];
-  // Directorios de clases sueltas: fuente imposible, bytecode directo
+  // Loose class directories: source impossible, direct bytecode
   for (const d of dirs) {
     for (const rel of entryCandidates(fqn, ".class")) {
       const full = path.join(d, ...rel.split("/"));
@@ -32,11 +32,11 @@ async function findDepArtifact(fqn, build) {
           return { kind: "bytecode-loose", classFile: full, label: path.basename(d) };
         }
       } catch {
-        // no está acá
+        // not here
       }
     }
   }
-  // Pasada 1: fuente real (.java directo o hermano -sources.jar)
+  // Pass 1: real source (direct .java or -sources.jar sibling)
   for (const jar of jars) {
     for (const rel of entryCandidates(fqn, ".java")) {
       if (await jarHasEntry(jar, rel)) {
@@ -44,7 +44,7 @@ async function findDepArtifact(fqn, build) {
           const text = await readZipEntry(jar, rel);
           return { kind: "sources", text, label: `${path.basename(jar)}` };
         } catch {
-          // seguir buscando
+          // keep searching
         }
       }
     }
@@ -56,13 +56,13 @@ async function findDepArtifact(fqn, build) {
             const text = await readZipEntry(srcJar, rel);
             return { kind: "sources", text, label: `${path.basename(srcJar)}` };
           } catch {
-            // seguir con el binario
+            // continue with the binary
           }
         }
       }
     }
   }
-  // Pasada 2: bytecode (.class, con $ para internas, o la externa)
+  // Pass 2: bytecode (.class, with $ for inner classes, or the outer one)
   for (const jar of jars) {
     const classRels = [];
     const parts = fqn.split(".");
@@ -75,7 +75,7 @@ async function findDepArtifact(fqn, build) {
         return { kind: "bytecode", jarPath: jar, entry: rel, label: `${path.basename(jar)}!/${rel}` };
       }
     }
-    // Sin $ pero en el .java de la externa (p. ej. Map.Entry vive en Map)
+    // Without $ but inside the outer .java (e.g. Map.Entry lives in Map)
     for (const rel of entryCandidates(fqn, ".class").slice(1)) {
       if (await jarHasEntry(jar, rel)) {
         return { kind: "bytecode", jarPath: jar, entry: rel, label: `${path.basename(jar)}!/${rel}` };

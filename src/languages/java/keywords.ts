@@ -1,5 +1,5 @@
-// Palabras reservadas de Java: nunca son navegables (evita subrayar
-// `if`, `for`, `new`... al mantener Ctrl sobre ellas).
+// Java reserved words: never navigable (avoids underlining
+// `if`, `for`, `new`... when holding Ctrl over them).
 const JAVA_KEYWORDS = new Set(
   ("abstract continue for new switch assert default goto package synchronized " +
     "boolean do if private this break double implements protected throw " +

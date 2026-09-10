@@ -1,7 +1,7 @@
 const path = require("path");
 const fs = require("fs/promises");
 
-// Se ignoran salidas de compilación y cachés de build.
+// Build outputs and build caches are ignored.
 const IGNORED_DIRS = new Set([
   "node_modules",
   ".git",
@@ -43,7 +43,7 @@ async function buildFileTree(dirPath) {
       })
   );
 
-  // Carpetas primero, luego archivos, ambos alfabéticos
+  // Folders first, then files, both alphabetically
   children.sort((a, b) => {
     if (a.type !== b.type) return a.type === "folder" ? -1 : 1;
     return a.name.localeCompare(b.name);

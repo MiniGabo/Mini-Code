@@ -1,4 +1,4 @@
-// Pantalla de bienvenida.
+// Welcome screen.
 import { FolderPlus, FolderOpen, FileCode2, Coffee } from "lucide-react";
 
 const isMac =
@@ -42,7 +42,7 @@ export interface WelcomeScreenProps {
   onNewFolder: () => void;
   onOpenFile: () => void;
   onOpenFolder: () => void;
-  // Recibidos por compat (hoy no se renderizan: sin lista de recientes)
+  // Received for compat (not rendered today: no recents list)
   recentFiles?: string[];
   folderName?: string | null;
   folderPath?: string | null;
@@ -62,11 +62,11 @@ export default function WelcomeScreen({
   return (
     <div className="flex h-full w-full items-center justify-center overflow-hidden bg-graphite-950">
       <div className="flex w-full max-w-[320px] flex-col items-center px-6 text-center">
-        {/* Logo grande, sin fondo */}
+        {/* Large logo, no background */}
         <Coffee size={56} strokeWidth={1.4} className="text-ember-500" />
         <h1 className="mt-4 text-4xl font-semibold text-graphite-100">Mini Code</h1>
 
-        {/* 3 acciones principales con shortcut al lado */}
+        {/* 3 main actions with shortcut on the side */}
         <div className="mt-10 w-full">
           <StartAction
             icon={FolderPlus}
@@ -88,7 +88,7 @@ export default function WelcomeScreen({
           />
         </div>
 
-        {/* Nombre de la nueva carpeta (solo cuando se eligió ubicación) */}
+        {/* New folder name (only when a location was picked) */}
         {pendingParent && (
           <div className="mt-4 w-full rounded-lg border border-ember-500/40 bg-graphite-850 p-3 text-left">
             <p className="truncate text-[11px] text-graphite-500" title={pendingParent}>

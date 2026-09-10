@@ -1,5 +1,5 @@
-// Punto único anti-duplicados para TODO el tráfico LSP saliente.
-// Solo colapsa lo concurrente idéntico; no cachea nada.
+// Single dedup entry point for ALL outgoing LSP traffic.
+// Only collapses identical concurrent requests; caches nothing.
 
 const lspInflight = new Map<string, Promise<any>>();
 

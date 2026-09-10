@@ -39,7 +39,7 @@ function register({ ipcMain }) {
     return true;
   });
 
-  // Eliminado seguro: mueve a la papelera (recuperable desde el SO)
+  // Safe delete: moves to trash (recoverable from the OS)
   ipcMain.handle("fs:trash", async (_event, filePath) => {
     await shell.trashItem(filePath);
     return true;

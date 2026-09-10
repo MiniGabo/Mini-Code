@@ -1,8 +1,8 @@
-// Fachada de compatibilidad: la implementación vive en módulos por dominio.
-//   languages/java/*      -> análisis Java + traducción LSP + completion + external query
-//   editor/features/*     -> navegación, reveal, diagnósticos, providers Monaco
-//   services/*            -> registry de modelos, doc-sync, dedup de requests
-// Los consumidores (App, EditorPane) importan de aquí sin cambios.
+// Compatibility facade: the implementation lives in domain modules.
+//   languages/java/*      -> Java analysis + LSP translation + completion + external query
+//   editor/features/*     -> navigation, reveal, diagnostics, Monaco providers
+//   services/*            -> model registry, doc-sync, request dedup
+// Consumers (App, EditorPane) import from here unchanged.
 export { dedupedLspRequest } from "./services/lsp/request";
 export {
   trackMonaco,

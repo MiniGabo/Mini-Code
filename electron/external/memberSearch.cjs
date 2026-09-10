@@ -22,8 +22,8 @@ function charBeforeIsDotOrRef(text, idx) {
 }
 function isMethodDeclBefore(before) {
   const beforeT = before.trim();
-  // Cola propia de usos: asignación, llamada anidada, return/throw, `new`,
-  // `this`/`super`, lambda, ternario, acceso, llaves o varias sentencias.
+  // Tail typical of usages: assignment, nested call, return/throw, `new`,
+  // `this`/`super`, lambda, ternary, access, braces or multiple statements.
   const badTail =
     /(=|\(|,|;|\{|\}|\breturn\b|\bnew\b|\bsuper\b|\bthis\b|\bassert\b|\bthrow\b|\byield\b|\belse\b|->|:|\?|\.|!)\s*$/.test(
       before
@@ -32,7 +32,7 @@ function isMethodDeclBefore(before) {
     /(^|[^\w$])(public|protected|private|static|final|abstract|synchronized|native|default|transient|volatile)\b/.test(
       before
     );
-  // Termina en tipo (no en cola de uso): `int foo(`, `boolean add(`
+  // Ends in a type (not in a usage tail): `int foo(`, `boolean add(`
   const endsType = /[\w<>\[\].?]+\s*$/.test(beforeT) && !badTail;
   return { hasModifier, endsType, badTail, beforeT };
 }
@@ -53,7 +53,7 @@ function braceAfterParen(text, openIdx) {
       continue;
     }
     if (state === "//") {
-      if (c === "\n") return false; // fin de línea sin `{`: no es bloque
+      if (c === "\n") return false; // end of line without `{`: not a block
       continue;
     }
     if (state === "/*") {
@@ -75,7 +75,7 @@ function braceAfterParen(text, openIdx) {
         return /^\s*\{/.test(rest) || /^\s*throws\b[^\n;{]*\{/.test(rest);
       }
     } else if (c === ";" && depth === 1) {
-      return false; // `;` antes de cerrar: no es declaración con bloque
+      return false; // `;` before closing: not a block declaration
     }
   }
   return false;
@@ -140,7 +140,7 @@ function findMethodInSource(text, member) {
   const name = member.name;
   const re = new RegExp(`\\b${escapeRegExp(name)}\\s*\\(`, "g");
   const decls = []; // { nameIdx, arityOk }
-  const fallbacks = []; // pinta de declaración pero aridad distinta
+  const fallbacks = []; // looks like a declaration but with a different arity
   let m = null;
   while ((m = re.exec(text)) !== null) {
     const nameIdx = m.index + m[0].indexOf(name);
@@ -150,7 +150,7 @@ function findMethodInSource(text, member) {
     const before = text.slice(lineStart, nameIdx);
     const { hasModifier, endsType, badTail, beforeT } = isMethodDeclBefore(before);
     let looksDecl = hasModifier || endsType;
-    // Sin nada antes (ctor paquete `Foo() {`): solo vale `{` en la MISMA línea
+    // With nothing before (package-private ctor `Foo() {`): only `{` on the SAME line counts
     if (!looksDecl && beforeT === "" && !badTail && braceAfterParen(text, openIdx)) {
       looksDecl = true;
     }
@@ -180,8 +180,8 @@ function parseSuperTypes(text, memberLine) {
   const lines = text.split("\n");
   const TYPE_RE = /(?:class|interface|enum|record)\s+[\w$]+(?:\s*<[^;{}]*>)?\s*(?:extends\s+([^\{;]+?))?\s*(?:implements\s+([^\{;]+?))?\s*(?:\{|permits\b|;)/;
   let declText = null;
-  // Subir desde el miembro: la primera línea que CIERRA un ámbito hacia
-  // arriba ({ sin pareja) es el inicio del tipo dueño (o su cabecera).
+  // Walk up from the member: the first line that CLOSES a scope going
+  // up (an unmatched {) is the start of the owning type (or its header).
   let depth = 0;
   const top = Math.min(memberLine - 1, lines.length - 1);
   for (let i = top; i >= 0; i--) {
@@ -197,14 +197,14 @@ function parseSuperTypes(text, memberLine) {
     }
   }
   if (!declText) {
-    // Respaldo: primera declaración del archivo
+    // Fallback: first declaration in the file
     const m = TYPE_RE.exec(text);
     if (!m) return [];
     declText = m;
   }
   const splitTypes = (s) => {
     if (!s) return [];
-    // quita genéricos <...> (anidados) antes de partir por comas
+    // strip <...> generics (nested) before splitting on commas
     let out = "";
     let dg = 0;
     for (const c of s) {
@@ -226,7 +226,7 @@ function extractJavadoc(text, lineNumber) {
   if (i < 0 || !lines[i].includes("*/")) return null;
   let j = i;
   while (j >= 0 && !lines[j].includes("/**")) {
-    if (lines[j].includes("/*")) return null; // bloque común, no javadoc
+    if (lines[j].includes("/*")) return null; // plain block, not javadoc
     j--;
   }
   if (j < 0) return null;
@@ -241,8 +241,8 @@ function extractJavadoc(text, lineNumber) {
   return cleaned || null;
 }
 function findFieldType(sourceText, fieldName) {
-  // `... Tipo nombre;` o `... Tipo nombre = ...` (javadoc/anotaciones y
-  // modificadores opcionales antes)
+  // `... Type name;` or `... Type name = ...` (javadoc/annotations and
+  // optional modifiers before)
   const re = new RegExp(
     `(?:^|[;{}]|\\*/)\\s*(?:@[\\w$.]+(?:\\([^)]*\\))?\\s*)*(?:(?:public|protected|private|static|final|transient|volatile|synchronized|native|strictfp)\\s+)*` +
       `([A-Za-z_$][\\w$.]*(?:\\s*<[^;{}=]*>)?(?:\\s*\\[\\s*\\])*)\\s+${escapeRegExp(fieldName)}\\s*(?:[=;,])`
@@ -254,7 +254,7 @@ function findFieldType(sourceText, fieldName) {
 function cleanType(t) {
   let s = (t ?? "").trim();
   s = s.replace(/^(?:final|volatile|transient)\s+/, "");
-  // quita genéricos <...> (anidados) y arreglos
+  // strip <...> generics (nested) and arrays
   let out = "";
   let depth = 0;
   for (const c of s) {
@@ -263,15 +263,15 @@ function cleanType(t) {
     else if (depth === 0) out += c;
   }
   s = out.replace(/\[\s*\]/g, "").trim();
-  // `private List` -> último token; `java.util.List` intacto
+  // `private List` -> last token; `java.util.List` untouched
   const parts = s.split(/\s+/);
   s = parts[parts.length - 1] ?? "";
   if (/^(byte|short|int|long|float|double|boolean|char|void)$/.test(s)) return null;
   return s || null;
 }
-// Candidatos FQN para un nombre de tipo dentro de un fuente (para los
-// saltos intermedios de `Sistema.campo.metodo`: el fuente localizado sí
-// trae sus imports y su package).
+// FQN candidates for a type name inside a source file (for the
+// intermediate hops of `System.field.method`: the located source does
+// bring its imports and its package).
 function fqnCandidatesForType(sourceText, typeName) {
   const out = [];
   const push = (fqn) => {

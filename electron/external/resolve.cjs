@@ -19,8 +19,8 @@ const {
   parseSuperTypes,
   extractJavadoc,
 } = require("./memberSearch.cjs");
-const resultCache = new Map(); // JSON(query) -> resultado (sin source? con source: pesa poco)
-const resultInflight = new Map(); // cacheId -> Promise (dedup concurrente)
+const resultCache = new Map(); // JSON(query) -> result (without source? with source: it's lightweight)
+const resultInflight = new Map(); // cacheId -> Promise (concurrent dedup)
 async function locateClassText(app, fqn, ctx, progress) {
   const rootPath = ctx?.rootPath ?? null;
   const build = ctx?.build ?? null;
@@ -28,10 +28,10 @@ async function locateClassText(app, fqn, ctx, progress) {
     try {
       if (typeof progress === "function" && message) progress(message);
     } catch {
-      // progreso best-effort
+      // best-effort progress
     }
   };
-  // 1. Fuente real del JDK
+  // 1. Real JDK source
   try {
     const jdk = await findJdkSource(fqn);
     if (jdk) {
@@ -41,7 +41,7 @@ async function locateClassText(app, fqn, ctx, progress) {
   } catch (err) {
     console.log(`[external] src.zip falló para ${fqn}: ${err.message}`);
   }
-  // 2/3. Dependencias: fuentes o bytecode+FernFlower (solo classpath declarado)
+  // 2/3. Dependencies: sources or bytecode+FernFlower (declared classpath only)
   let dep = null;
   try {
     dep = await findDepArtifact(fqn, build);
@@ -66,7 +66,7 @@ async function locateClassText(app, fqn, ctx, progress) {
       classFile = null;
     }
   }
-  // 4. Runtime del JDK (jrt) cuando no hay src.zip
+  // 4. JDK runtime (jrt) when there is no src.zip
   if (!classFile) {
     say("Buscando en el runtime del JDK…");
     try {
@@ -87,9 +87,9 @@ async function locateClassText(app, fqn, ctx, progress) {
   return { kind: "decompiled", text: header + decompiled, originLabel, fqn };
 }
 async function resolveExternal(app, query, rootPath, onProgress) {
-  // Presupuesto global: ningún resolve cuelga eternamente. Al agotarse se
-  // devuelve error (la vista lo muestra); lo ya resuelto queda en caché y
-  // el trabajo en curso la completa para el siguiente intento.
+  // Global budget: no resolve hangs forever. When exhausted an
+  // error is returned (the view shows it); what is already resolved stays cached and
+  // the in-flight work completes it for the next attempt.
   const timeout = new Promise((resolve) =>
     setTimeout(
       () =>
@@ -107,14 +107,14 @@ async function resolveExternalInner(app, query, rootPath, onProgress) {
     try {
       if (typeof onProgress === "function" && message) onProgress(message);
     } catch {
-      // progreso best-effort
+      // best-effort progress
     }
   };
   const cacheId = JSON.stringify([query.candidates, query.fieldHops, query.member, rootPath, query.contextDir ?? null, query.primaryKind ?? null]);
   if (resultCache.has(cacheId)) return resultCache.get(cacheId);
-  // Dedup en vuelo: clicks/hovers repetidos sobre el mismo símbolo
-  // comparten un solo pipeline en vez de lanzar N mvn+FernFlower en
-  // paralelo.
+  // In-flight dedup: repeated clicks/hovers over the same symbol
+  // share a single pipeline instead of launching N mvn+FernFlower in
+  // parallel.
   if (resultInflight.has(cacheId)) return resultInflight.get(cacheId);
   const running = resolveExternalOnce(app, query, rootPath, progress, cacheId);
   resultInflight.set(cacheId, running);
@@ -125,8 +125,8 @@ async function resolveExternalInner(app, query, rootPath, onProgress) {
   }
 }
 async function resolveExternalOnce(app, query, rootPath, progress, cacheId) {
-  // Solo los éxitos se cachean de forma permanente. Los fallos ("no se
-  // encontró", mvn caído, timeout parcial).
+  // Only successes are cached permanently. Failures ("not
+  // found", mvn down, partial timeout).
   const fail = (error) => ({ ok: false, error });
   if (!query || !Array.isArray(query.candidates) || query.candidates.length === 0) {
     return fail("Sin candidatos de clase");
@@ -134,19 +134,19 @@ async function resolveExternalOnce(app, query, rootPath, progress, cacheId) {
   const simple = simpleNameOf(query.candidates[0]);
   progress(`Buscando ${simple} en el JDK y las dependencias…`);
   const hops = [...(query.fieldHops ?? [])];
-  // Classpath declarado UNA vez (pom/gradle o legacy): vale para todas
-  // las candidatas y saltos de este resolve.
+  // Declared classpath ONCE (pom/gradle or legacy): valid for every
+  // candidate and hop in this resolve.
   const ctx = {
     rootPath,
     ownFqn: (query.ownFqn ?? "").toLowerCase() || null,
     build: await resolveBuildClasspath(query.contextDir ?? null, rootPath, progress),
   };
-  // Nunca la propia clase (el renderer ya la filtra; esto cubre el hover y
-  // cualquier IPC directo). Incluye sus internas (Own.Inner).
+  // Never the class itself (the renderer already filters it; this covers hover and
+  // any direct IPC). Includes its inner classes (Own.Inner).
   const isOwn = (fqn) => isOwnFqn(query.ownFqn, fqn);
-  // La ganadora según Java (import exacto, FQN literal de la línea o mismo
-  // paquete) manda: si es una clase DEL PROYECTO, el símbolo es local y su
-  // flujo es el LSP, jamás una homónima de dependencias.
+  // The winner according to Java (exact import, literal FQN on the line, or same
+  // package) rules: if it is a class FROM THE PROJECT, the symbol is local and its
+  // flow is the LSP, never a same-named dependency.
   const primary = query.candidates[0];
   try {
     if (!isOwn(primary) && (await hasProjectSource(primary, rootPath))) {
@@ -156,22 +156,22 @@ async function resolveExternalOnce(app, query, rootPath, progress, cacheId) {
       );
     }
   } catch {
-    // ante la duda se intenta localizar igual
+    // When in doubt it is still attempted
   }
-  // Modo estricto (primaryKind qualified|exact): solo se prueba la ganadora.
+  // Strict mode (primaryKind qualified|exact): only the winner is tried.
   const strict = query.primaryKind === "qualified" || query.primaryKind === "exact";
   const todo = strict ? [primary] : query.candidates;
-  // Respaldo si el miembro no aparece en ninguna candidata: la declaración
-  // de la primera clase localizada (mejor mostrar la clase que nada).
+  // Fallback if the member appears in no candidate: the declaration
+  // of the first located class (better to show the class than nothing).
   let fallback = null;
   for (const fqn of todo) {
     if (isOwn(fqn)) continue;
-    // Las clases con fuente en el proyecto NUNCA van por cá (su flujo es
-    // el LSP/local; si no, terminaríamos descompilando el propio código).
+    // Classes with source in the project NEVER go through here (their flow is
+    // the LSP/local; otherwise we would end up decompiling our own code).
     try {
       if (await hasProjectSource(fqn, rootPath)) continue;
     } catch {
-      // ante la duda se intenta localizar igual
+      // When in doubt it is still attempted
     }
     let located = null;
     try {
@@ -181,8 +181,8 @@ async function resolveExternalOnce(app, query, rootPath, progress, cacheId) {
       continue;
     }
     if (!located) continue;
-    // Saltos intermedios `Clase.campo.metodo`: el tipo del campo se lee
-    // del fuente localizado (que trae sus propios imports).
+    // Intermediate hops `Class.field.method`: the field's type is read
+    // from the located source (which brings its own imports).
     let cur = located;
     let ok = true;
     for (const hop of hops) {
@@ -204,7 +204,7 @@ async function resolveExternalOnce(app, query, rootPath, progress, cacheId) {
             break;
           }
         } catch {
-          // probar siguiente
+          // try next one
         }
       }
       if (!next) {
@@ -220,8 +220,8 @@ async function resolveExternalOnce(app, query, rootPath, progress, cacheId) {
       const pos = findClassDecl(cur.text, curSimple) ?? { line: 1, column: 1 };
       return done(cacheId, cur, pos, member, progress);
     }
-    // Método: primero en la propia clase; si es heredado, caminar la
-    // jerarquía (extends/implements) hasta quien lo implementa.
+    // Method: first in the class itself; if inherited, walk the
+    // hierarchy (extends/implements) up to whoever implements it.
     const here = findMethodInSource(cur.text, member);
     if (here) return done(cacheId, cur, here, member, progress);
     const inherited = await findInherited(app, cur, member, ctx, progress);
@@ -235,8 +235,8 @@ async function resolveExternalOnce(app, query, rootPath, progress, cacheId) {
   return fail("Símbolo no encontrado en JDK ni dependencias");
 }
 
-// Camina la jerarquía (superclase e interfaces, con sus propios imports)
-// buscando la declaración del método. Profundidad acotada.
+// Walk the hierarchy (superclass and interfaces, with their own imports)
+// looking for the method declaration. Bounded depth.
 async function findInherited(app, located, member, ctx, progress, depth = 0, seen = null) {
   if (depth >= 5) return null;
   const rootPath = ctx?.rootPath ?? null;
@@ -264,13 +264,13 @@ async function findInherited(app, located, member, ctx, progress, depth = 0, see
   }
   return null;
 }
-// Línea aproximada del miembro para afinar parseSuperTypes (o 1).
+// Approximate member line to refine parseSuperTypes (or 1).
 function memberLineHint(text, member) {
   try {
     const pos = findMethodInSource(text, member);
     if (pos) return pos.line;
   } catch {
-    // sin pista
+    // no hint
   }
   return 1;
 }

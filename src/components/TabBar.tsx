@@ -1,4 +1,4 @@
-// Pestañas de archivos abiertos.
+// Open file tabs.
 import { X, Lock, Loader2 } from "lucide-react";
 import FileIcon from "./FileIcon";
 import { fileKeyOf } from "../services/files/paths";

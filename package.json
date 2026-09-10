@@ -1,8 +1,8 @@
 {
   "name": "mini-code",
   "productName": "Mini Code",
-  "version": "1.0.0",
-  "description": "Editor de código ligero, construido con Electron + Monaco",
+  "version": "0.1",
+  "description": "Lightweight code editor, built with Electron + Monaco",
   "author": "Mini Gabo",
   "license": "MIT",
   "private": true,
