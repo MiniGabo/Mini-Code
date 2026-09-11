@@ -62,7 +62,7 @@ jobs:
               $range = "$prev..$tag"
             }
             $log = git log $range --pretty=format:'- %s (%h)'
-            $msg = "Changes in $tag:`n$log"
+            $msg = "Changes in ${tag}:`n${log}"
           }
           $notesFile = New-TemporaryFile
           Set-Content -Path $notesFile -Value $msg -Encoding UTF8
