@@ -1,7 +1,9 @@
 node_modules
 dist
 release
-# LSP Java vendoreado: solo fuente; los jars del runtime se regeneran con Maven
+# Vendored Java LSP: source only; runtime jars are regenerated with Maven
 lsp-servers/java-language-server/dist/
 .DS_Store
 *.log
+# Temporary: release notes go into the tag message
+release-notes.md
