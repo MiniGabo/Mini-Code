@@ -1,6 +1,21 @@
 const { app, BrowserWindow, ipcMain, Menu } = require("electron");
 const path = require("path");
 
+// Single display name: prevents Electron from generating %APPDATA%/mini-code
+// (package.json name) in addition to %APPDATA%/Mini Code (productName).
+// Enforces a single userData path: %APPDATA%/Mini Code, in dev and packaged.
+try {
+  app.setName("Mini Code");
+} catch {}
+try {
+  app.setAppUserModelId("com.gabo.minicode");
+} catch {}
+try {
+  app.setPath("userData", path.join(app.getPath("appData"), "Mini Code"));
+} catch (err) {
+  console.warn("[main] no se pudo fijar userData:", err && err.message);
+}
+
 const isDev = process.env.NODE_ENV === "development";
 
 let mainWindow;

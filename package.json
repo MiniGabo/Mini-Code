@@ -45,6 +45,7 @@
   "build": {
     "appId": "com.gabo.minicode",
     "productName": "Mini Code",
+    "artifactName": "${productName} Setup ${version}.${ext}",
     "icon": "assets/icon.ico",
     "files": [
       "dist/**/*",
@@ -64,8 +65,42 @@
     "directories": {
       "output": "release"
     },
+    "publish": {
+      "provider": "github",
+      "owner": "MiniGabo",
+      "repo": "Mini-Code",
+      "releaseType": "release"
+    },
     "win": {
-      "icon": "assets/icon.ico"
+      "icon": "assets/icon.ico",
+      "publisherName": "Mini Gabo",
+      "requestedExecutionLevel": "asInvoker",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "allowElevation": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Mini Code",
+      "uninstallDisplayName": "Mini Code",
+      "deleteAppDataOnUninstall": false,
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico",
+      "installerHeaderIcon": "assets/icon.ico",
+      "displayLanguageSelector": true,
+      "multiLanguageInstaller": true,
+      "unicode": true,
+      "runAfterFinish": true
     },
     "linux": {
       "icon": "assets/icon.png"

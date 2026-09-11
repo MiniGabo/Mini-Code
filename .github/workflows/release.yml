@@ -1,0 +1,69 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Check tag matches package.json version
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $tag = "${{ github.ref_name }}"
+          if ($tag -ne "v$version") { throw "Tag $tag does not match package.json version v$version" }
+
+      - name: Install dependencies
+        shell: pwsh
+        run: pnpm install --frozen-lockfile
+
+      - name: Build and publish to GitHub Releases
+        shell: pwsh
+        run: |
+          pnpm build
+          npx electron-builder --publish always
+
+      - name: Set release title and notes
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $title = "Mini Code $tag"
+          $msg = git tag -l --format='%(contents)' $tag
+          if ([string]::IsNullOrWhiteSpace($msg)) {
+            $prev = ""
+            try { $prev = git describe --tags --abbrev=0 "$tag^" 2>$null } catch {}
+            if ([string]::IsNullOrWhiteSpace($prev)) {
+              $range = $tag
+            } else {
+              $range = "$prev..$tag"
+            }
+            $log = git log $range --pretty=format:'- %s (%h)'
+            $msg = "Changes in $tag:`n$log"
+          }
+          $notesFile = New-TemporaryFile
+          Set-Content -Path $notesFile -Value $msg -Encoding UTF8
+          gh release edit $tag --title $title --notes-file $notesFile
