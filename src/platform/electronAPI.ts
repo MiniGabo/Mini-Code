@@ -1,8 +1,11 @@
 // Typed access to the Electron bridge (preload.cjs -> window.electronAPI).
+import { t } from "../stores/settingsStore";
 
 export interface ElectronAPI {
   openFolder(): Promise<import("../types").FileTreeNode | null>;
   pickParentFolder(): Promise<string | null>;
+  pickJdk(): Promise<string | null>;
+  validateJdk(home: string): Promise<{ ok: boolean; error?: string }>;
   openFile(): Promise<{ path: string; content: string } | null>;
   saveFileAs(content: string, defaultName?: string): Promise<string | null>;
   readFile(filePath: string): Promise<string>;
@@ -13,11 +16,14 @@ export interface ElectronAPI {
   moveEntry(srcPath: string, destPath: string): Promise<string>;
   deleteEntry(filePath: string): Promise<boolean>;
   trashEntry(filePath: string): Promise<boolean>;
-  lspStart(rootPath: string): Promise<{ ok: boolean; error?: string; capabilities?: unknown }>;
+  lspStart(rootPath: string): Promise<{ ok: boolean; error?: string; capabilities?: unknown; jdkWarning?: string | null }>;
   lspStop(): Promise<boolean>;
+  getSettings(): Promise<Record<string, unknown>>;
+  setSetting(key: string, value: unknown): Promise<unknown>;
   lspRequest(method: string, params: unknown): Promise<unknown>;
   lspNotify(method: string, params: unknown): Promise<unknown>;
   resolveExternal(query: unknown): Promise<unknown>;
+  checkMavenDeps(deps: Array<{ group: string; artifact: string; version: string }>, repos?: Array<{ id?: string; url: string }>): Promise<{ ok: boolean; results?: Record<string, { existsArtifact: boolean; existsVersion: boolean | null; onlyLocal?: boolean }>; error?: string }>;
   onExternalProgress(cb: (v: { token: string; message: string }) => void): (() => void) | undefined;
   onDiagnostics(cb: (v: { uri: string; diagnostics: unknown[] }) => void): (() => void) | undefined;
   onLspStatus(cb: (v: { state: string; message?: string }) => void): (() => void) | undefined;
@@ -26,6 +32,36 @@ export interface ElectronAPI {
   closeWindow(): void;
   isMaximized(): Promise<boolean>;
   onMaximizeChange(cb: (v: boolean) => void): (() => void) | undefined;
+  getAppVersion(): Promise<{ ok: boolean; version?: string; error?: string }>;
+  checkForUpdates(manual?: boolean): Promise<UpdateCheckResult>;
+  downloadUpdate(): Promise<{ ok: boolean; path?: string; error?: string }>;
+  cancelUpdateDownload(): Promise<{ ok: boolean; error?: string }>;
+  openReleasePage(): Promise<{ ok: boolean; error?: string }>;
+  quitAndInstall(): Promise<{ ok: boolean; error?: string }>;
+  onUpdaterStatus(cb: (v: UpdateCheckResult) => void): (() => void) | undefined;
+  onUpdaterProgress(cb: (v: UpdateProgress) => void): (() => void) | undefined;
+}
+
+export interface UpdateCheckResult {
+  ok: boolean;
+  currentVersion?: string;
+  latestVersion?: string | null;
+  updateAvailable?: boolean;
+  fileName?: string;
+  size?: number | null;
+  downloadUrl?: string;
+  releasePage?: string;
+  checkedAt?: number;
+  error?: string;
+}
+
+export interface UpdateProgress {
+  status: "started" | "downloading" | "downloaded" | "error";
+  received?: number;
+  total?: number | null;
+  percent?: number | null;
+  path?: string;
+  error?: string;
 }
 
 declare global {
@@ -42,6 +78,6 @@ export function getElectronAPI(): ElectronAPI | undefined {
 /** Accessor that throws if there is no bridge (better than failing silently). */
 export function requireElectronAPI(): ElectronAPI {
   const api = getElectronAPI();
-  if (!api) throw new Error("Sin puente Electron. Que raro");
+  if (!api) throw new Error(t("app.noBridge"));
   return api;
 }

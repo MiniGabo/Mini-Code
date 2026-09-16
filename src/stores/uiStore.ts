@@ -32,6 +32,8 @@ interface UiState {
   pendingClose: PendingClose | null;
   pendingParent: string | null;
   newFolderName: string;
+  /** Saved build files that have not reloaded the LSP yet (key -> info). */
+  buildReloadPending: Record<string, { name: string; at: number }>;
   toggleSidebar: () => void;
   setSidebarVisible: (v: boolean) => void;
   setSidebarWidth: (w: number) => void;
@@ -41,6 +43,9 @@ interface UiState {
   setPendingClose: (p: PendingClose | null) => void;
   setPendingParent: (p: string | null) => void;
   setNewFolderName: (n: string) => void;
+  markBuildDirty: (key: string, name: string) => void;
+  clearBuildReload: (key: string) => void;
+  clearAllBuildReload: () => void;
   resetForRestart: () => void;
 }
 
@@ -51,6 +56,7 @@ export const useUiStore = create<UiState>((set) => ({
   pendingClose: null,
   pendingParent: null,
   newFolderName: "",
+  buildReloadPending: {},
 
   toggleSidebar: () => set((s) => ({ sidebarVisible: !s.sidebarVisible })),
   setSidebarVisible: (v) => set({ sidebarVisible: v }),
@@ -79,6 +85,21 @@ export const useUiStore = create<UiState>((set) => ({
   setPendingParent: (p) => set({ pendingParent: p }),
   setNewFolderName: (n) => set({ newFolderName: n }),
 
+  markBuildDirty: (key, name) =>
+    set((s) => ({
+      buildReloadPending: { ...s.buildReloadPending, [key]: { name, at: Date.now() } },
+    })),
+
+  clearBuildReload: (key) =>
+    set((s) => {
+      if (!(key in s.buildReloadPending)) return s;
+      const next = { ...s.buildReloadPending };
+      delete next[key];
+      return { buildReloadPending: next };
+    }),
+
+  clearAllBuildReload: () => set({ buildReloadPending: {} }),
+
   resetForRestart: () =>
-    set({ pendingClose: null, pendingParent: null, newFolderName: "", sidebarVisible: true }),
+    set({ pendingClose: null, pendingParent: null, newFolderName: "", sidebarVisible: true, buildReloadPending: {} }),
 }));

@@ -1,5 +1,8 @@
 const fs = require("fs/promises");
+const fsSync = require("fs");
+const path = require("path");
 const { dialog } = require("electron");
+const { t } = require("../i18n.cjs");
 const { buildFileTree } = require("./fileTree.cjs");
 function register({ ipcMain, getWindow }) {
 
@@ -19,11 +22,35 @@ function register({ ipcMain, getWindow }) {
   // returns the chosen path without opening it as a workspace.
   ipcMain.handle("dialog:pickParentFolder", async () => {
     const result = await dialog.showOpenDialog(getWindow(), {
-      title: "Selecciona dónde crear la carpeta",
+      title: t("main.pickParentTitle"),
       properties: ["openDirectory", "createDirectory"],
     });
     if (result.canceled || result.filePaths.length === 0) return null;
     return result.filePaths[0];
+  });
+
+  // JDK home picker for Settings (returns the path without opening anything).
+  ipcMain.handle("dialog:pickJdk", async () => {
+    const result = await dialog.showOpenDialog(getWindow(), {
+      title: t("main.pickJdkTitle"),
+      properties: ["openDirectory"],
+    });
+    if (result.canceled || result.filePaths.length === 0) return null;
+    return result.filePaths[0];
+  });
+
+  // Validates a JDK home: <home>/bin/java(.exe) must exist.
+  ipcMain.handle("dialog:validateJdk", async (_event, home) => {
+    const exe = process.platform === "win32" ? "java.exe" : "java";
+    const dir = String(home ?? "").trim();
+    if (dir) {
+      try {
+        if (fsSync.existsSync(path.join(dir, "bin", exe))) return { ok: true };
+      } catch {
+        // unreadable location: invalid
+      }
+    }
+    return { ok: false, error: t("settings.java.jdkInvalid", { exe, path: dir || "?" }) };
   });
 
   ipcMain.handle("dialog:openFile", async () => {
@@ -34,7 +61,7 @@ function register({ ipcMain, getWindow }) {
         { name: "YAML", extensions: ["yml", "yaml"] },
         { name: "XML", extensions: ["xml"] },
         { name: "Markdown", extensions: ["md", "markdown"] },
-        { name: "Todos los archivos", extensions: ["*"] },
+        { name: t("main.allFilesFilter"), extensions: ["*"] },
       ],
     });
     if (result.canceled || result.filePaths.length === 0) return null;
@@ -46,13 +73,13 @@ function register({ ipcMain, getWindow }) {
 
   ipcMain.handle("dialog:saveFileAs", async (_event, { content, defaultName }) => {
     const result = await dialog.showSaveDialog(getWindow(), {
-      defaultPath: defaultName || "NuevoArchivo.java",
+      defaultPath: defaultName || t("main.defaultFileName"),
       filters: [
         { name: "Java", extensions: ["java"] },
         { name: "YAML", extensions: ["yml", "yaml"] },
         { name: "XML", extensions: ["xml"] },
         { name: "Markdown", extensions: ["md", "markdown"] },
-        { name: "Todos los archivos", extensions: ["*"] },
+        { name: t("main.allFilesFilter"), extensions: ["*"] },
       ],
     });
     if (result.canceled || !result.filePath) return null;

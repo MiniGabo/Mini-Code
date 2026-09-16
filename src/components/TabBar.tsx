@@ -1,8 +1,9 @@
 // Open file tabs.
-import { X, Lock, Loader2 } from "lucide-react";
+import { X, Lock, Loader2, Settings } from "lucide-react";
 import FileIcon from "./FileIcon";
 import { fileKeyOf } from "../services/files/paths";
 import type { OpenFile, FileKey } from "../types";
+import { useT } from "../stores/settingsStore";
 
 export interface TabBarProps {
   files: OpenFile[];
@@ -13,6 +14,7 @@ export interface TabBarProps {
 }
 
 export default function TabBar({ files, activeKey, onSelect, onClose, fileErrors }: TabBarProps) {
+  const t = useT();
   return (
     <div className="flex min-w-0 flex-1 items-stretch gap-px overflow-x-auto">
       {files.map((f) => {
@@ -31,26 +33,30 @@ export default function TabBar({ files, activeKey, onSelect, onClose, fileErrors
             }${errCount > 0 ? " !bg-red-500/10" : ""}`}
             title={
               f.readOnly
-                ? `${f.name} (solo lectura${f.originLabel ? ` · ${f.originLabel}` : ""})`
+                ? `${f.name} (${t("tabbar.readOnly")}${f.originLabel ? ` · ${f.originLabel}` : ""})`
                 : (f.path ?? f.name)
             }
           >
-            <FileIcon name={f.name} size={13} className="shrink-0" />
+            {f.id === "settings" ? (
+              <Settings size={13} className="shrink-0 text-graphite-400" />
+            ) : (
+              <FileIcon name={f.name} size={13} className="shrink-0" />
+            )}
             <span className="truncate">{f.name}</span>
-            {f.readOnly && !f.loading && (
-              <span title="Solo lectura" className="contents">
+            {f.readOnly && !f.loading && f.id !== "settings" && (
+              <span title={t("tabbar.readOnly")} className="contents">
                 <Lock size={11} className="shrink-0 text-graphite-500" />
               </span>
             )}
             {f.loading && (
-              <span title="Cargando…" className="contents">
+              <span title={t("tabbar.loading")} className="contents">
                 <Loader2 size={11} className="shrink-0 animate-spin text-ember-400" />
               </span>
             )}
             {errCount > 0 && (
               <span
                 className="shrink-0 rounded-full bg-red-500/20 px-1.5 text-[11px] font-medium text-red-400"
-                title={`${errCount} error${errCount === 1 ? "" : "es"}`}
+                title={t(errCount === 1 ? "tabbar.error_one" : "tabbar.error_other", { count: errCount })}
               >
                 {errCount}
               </span>
@@ -60,7 +66,7 @@ export default function TabBar({ files, activeKey, onSelect, onClose, fileErrors
                 <>
                   <span
                     className="h-2 w-2 rounded-full bg-ember-400 group-hover:hidden"
-                    title="Sin guardar"
+                    title={t("tabbar.unsaved")}
                   />
                   <button
                     onClick={(e) => {
@@ -68,7 +74,7 @@ export default function TabBar({ files, activeKey, onSelect, onClose, fileErrors
                       onClose(key);
                     }}
                     className="hidden rounded p-0.5 hover:bg-graphite-700 hover:text-graphite-100 group-hover:block"
-                    title="Cerrar"
+                    title={t("tabbar.close")}
                   >
                     <X size={12} />
                   </button>
@@ -79,10 +85,10 @@ export default function TabBar({ files, activeKey, onSelect, onClose, fileErrors
                     e.stopPropagation();
                     onClose(key);
                   }}
-                  className={`rounded p-0.5 hover:bg-graphite-700 hover:text-graphite-100 ${
-                    isActive ? "" : "hidden group-hover:block"
-                  }`}
-                  title="Cerrar"
+                    className={`rounded p-0.5 hover:bg-graphite-700 hover:text-graphite-100 ${
+                      isActive ? "" : "hidden group-hover:block"
+                    }`}
+                    title={t("tabbar.close")}
                 >
                   <X size={12} />
                 </button>

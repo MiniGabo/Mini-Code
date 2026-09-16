@@ -9,6 +9,7 @@ import { flashTarget } from "../navigation/reveal";
 import { buildExternalQuery } from "../../../languages/java/externalQuery";
 import { openDecompiledPending, fulfillDecompiled } from "../navigation/bridges";
 import { contextDirOfFsPath } from "../../../services/files/paths";
+import { t } from "../../../stores/settingsStore";
 
 /** Shared flash cell: the feature and the pending reveal use the
  *  same one (jumping cancels the previous flash, as before with `disposeFlash`). */
@@ -189,7 +190,7 @@ export function createCtrlClickHandler(
         }
         if (!ext || !ext.candidates || ext.candidates.length === 0) return;
         const token = ext.candidates[0];
-        const simple = token.split(".").pop() ?? clickedName ?? "Clase";
+        const simple = token.split(".").pop() ?? clickedName ?? t("external.unknownClass");
         // Directory of the current file: main looks there for the closest pom.xml or
         // build.gradle to use ITS declared dependencies.
         let contextDir: string | null = null;
@@ -215,7 +216,7 @@ export function createCtrlClickHandler(
         }
         let done: any = null;
         try {
-          done = fulfillDecompiled(pending.id, res ?? { ok: false, error: "Error al resolver el símbolo" });
+          done = fulfillDecompiled(pending.id, res ?? { ok: false, error: t("external.resolveFailed") });
         } catch {
           return;
         }
@@ -287,7 +288,7 @@ export function createCtrlClickHandler(
       try {
         clearCtrlDecor();
       } catch {
-        // editor ya liberado
+        // editor already disposed
       }
     },
   };

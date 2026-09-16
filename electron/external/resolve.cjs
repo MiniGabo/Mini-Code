@@ -1,5 +1,6 @@
 const path = require("path");
 const os = require("os");
+const { t } = require("../i18n.cjs");
 const { findJdkSource } = require("./jdk.cjs");
 const { findDepArtifact } = require("./artifacts.cjs");
 const { findJrtClass } = require("./jrt.cjs");
@@ -33,9 +34,9 @@ async function locateClassText(app, fqn, ctx, progress) {
   };
   // 1. Real JDK source
   try {
-    const jdk = await findJdkSource(fqn);
+    const jdk = await findJdkSource(fqn, ctx?.jdkHome ?? null);
     if (jdk) {
-      say("Fuente encontrada en el JDK…");
+      say(t("main.resolveJdkSource"));
       return { kind: "sources", text: jdk.text, originLabel: jdk.label, fqn };
     }
   } catch (err) {
@@ -49,13 +50,13 @@ async function locateClassText(app, fqn, ctx, progress) {
     console.log(`[external] búsqueda en jars falló para ${fqn}: ${err.message}`);
   }
   if (dep && dep.kind === "sources") {
-    say(`Fuente encontrada en ${path.basename(dep.label)}…`);
+    say(t("main.resolveDepSource", { file: path.basename(dep.label) }));
     return { kind: "sources", text: dep.text, originLabel: dep.label, fqn };
   }
   let classFile = dep && dep.classFile ? dep.classFile : null;
   let originLabel = dep ? dep.label : null;
   if (dep && dep.kind === "bytecode") {
-    say(`Extrayendo de ${path.basename(dep.jarPath)}…`);
+    say(t("main.resolveExtracting", { file: path.basename(dep.jarPath) }));
     const tag = cacheKey(dep.jarPath + "!" + dep.entry);
     const dest = path.join(os.tmpdir(), "mini-code-decompiled", tag, path.basename(dep.entry));
     try {
@@ -68,7 +69,7 @@ async function locateClassText(app, fqn, ctx, progress) {
   }
   // 4. JDK runtime (jrt) when there is no src.zip
   if (!classFile) {
-    say("Buscando en el runtime del JDK…");
+    say(t("main.resolveJdkRuntime"));
     try {
       const jrt = await findJrtClass(fqn);
       if (jrt) {
@@ -80,7 +81,7 @@ async function locateClassText(app, fqn, ctx, progress) {
     }
   }
   if (!classFile) return null;
-  say("Descompilando con FernFlower…");
+  say(t("main.resolveDecompiling"));
   const tag = cacheKey("ff:" + classFile);
   const decompiled = await decompileClassFile(app, classFile, tag);
   const header = FF_HEADER(originLabel ?? path.basename(classFile));
@@ -95,7 +96,7 @@ async function resolveExternal(app, query, rootPath, onProgress) {
       () =>
         resolve({
           ok: false,
-          error: "Tardó demasiado (límite de 5 minutos). Reintenta el Ctrl+Click.",
+          error: t("main.resolveTimeout"),
         }),
       300000
     )
@@ -129,10 +130,10 @@ async function resolveExternalOnce(app, query, rootPath, progress, cacheId) {
   // found", mvn down, partial timeout).
   const fail = (error) => ({ ok: false, error });
   if (!query || !Array.isArray(query.candidates) || query.candidates.length === 0) {
-    return fail("Sin candidatos de clase");
+    return fail(t("main.resolveNoCandidates"));
   }
   const simple = simpleNameOf(query.candidates[0]);
-  progress(`Buscando ${simple} en el JDK y las dependencias…`);
+  progress(t("main.resolveSearching", { symbol: simple }));
   const hops = [...(query.fieldHops ?? [])];
   // Declared classpath ONCE (pom/gradle or legacy): valid for every
   // candidate and hop in this resolve.
@@ -141,6 +142,17 @@ async function resolveExternalOnce(app, query, rootPath, progress, cacheId) {
     ownFqn: (query.ownFqn ?? "").toLowerCase() || null,
     build: await resolveBuildClasspath(query.contextDir ?? null, rootPath, progress),
   };
+  // Project JDK (build-declared version, else first found): JDK sources come
+  // from it instead of the first detected home. Computed once per resolve.
+  try {
+    const { selectProjectJdk } = require("./projectJdk.cjs");
+    ctx.jdkHome = selectProjectJdk({
+      buildFile: ctx.build?.buildFile ?? null,
+      rootDir: rootPath,
+    }).home;
+  } catch {
+    ctx.jdkHome = null;
+  }
   // Never the class itself (the renderer already filters it; this covers hover and
   // any direct IPC). Includes its inner classes (Own.Inner).
   const isOwn = (fqn) => isOwnFqn(query.ownFqn, fqn);
@@ -150,10 +162,7 @@ async function resolveExternalOnce(app, query, rootPath, progress, cacheId) {
   const primary = query.candidates[0];
   try {
     if (!isOwn(primary) && (await hasProjectSource(primary, rootPath))) {
-      return fail(
-        `${simpleNameOf(primary)} es una clase de tu proyecto, no una dependencia: ` +
-          "ábrela desde el explorador o usa Ir a definición con el servidor Java."
-      );
+      return fail(t("main.resolveOwnProject", { name: simpleNameOf(primary) }));
     }
   } catch {
     // When in doubt it is still attempted
@@ -186,7 +195,7 @@ async function resolveExternalOnce(app, query, rootPath, progress, cacheId) {
     let cur = located;
     let ok = true;
     for (const hop of hops) {
-      progress(`Resolviendo ${hop}…`);
+      progress(t("main.resolveHop", { hop }));
       const fieldType = findFieldType(cur.text, hop);
       if (!fieldType) {
         ok = false;
@@ -232,7 +241,7 @@ async function resolveExternalOnce(app, query, rootPath, progress, cacheId) {
     }
   }
   if (fallback) return done(cacheId, fallback.located, fallback.pos, query.member, progress);
-  return fail("Símbolo no encontrado en JDK ni dependencias");
+  return fail(t("main.symbolNotFound"));
 }
 
 // Walk the hierarchy (superclass and interfaces, with their own imports)

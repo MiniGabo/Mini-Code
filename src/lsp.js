@@ -47,5 +47,8 @@ export {
   subscribeFileErrors,
   clearFileErrors,
   setupDiagnostics,
+  setOwnerErrors,
+  clearOwnerForFile,
 } from "./editor/features/diagnostics/diagnostics";
+export { attachBuildDiagnostics, isBuildFileName } from "./editor/features/diagnostics/buildDiagnostics";
 export { ensureJavaProviders } from "./editor/features/providers/javaProviders";

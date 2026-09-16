@@ -16,6 +16,9 @@ const REGISTRY: LanguageSpec[] = [
   { id: "yaml", extensions: [".yml", ".yaml"], lsp: false, virtualReadOnly: false },
   { id: "xml", extensions: [".xml"], lsp: false, virtualReadOnly: false },
   { id: "markdown", extensions: [".md", ".markdown"], lsp: false, virtualReadOnly: false },
+  { id: "kotlin", extensions: [".kts", ".gradle.kts"], lsp: false, virtualReadOnly: false },
+  { id: "groovy", extensions: [".gradle"], lsp: false, virtualReadOnly: false },
+  { id: "plaintext", extensions: [], lsp: false, virtualReadOnly: false },
 ];
 
 const byId = new Map(REGISTRY.map((l) => [l.id, l]));

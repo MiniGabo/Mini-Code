@@ -1,6 +1,6 @@
 // Registry key -> Monaco model URI + LRU + dispose.
-// Syncs a Java model with the server: initial didOpen, debounced didChange
-// and didClose on unmount. Returns a cleanup function.
+// Doc sync (didOpen/didChange) lives in docSync; models are KEPT across tab
+// switches and the server keeps their documents open project-wide.
 // The canonical URI is always model.uri.toString() (the one also used by
 // requests); fileUri only decides whether there is a document to open.
 let monacoRefForDispose: any = null;

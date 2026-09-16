@@ -16,14 +16,16 @@ import type { MouseEventHandler } from "react";
 //   - basic-languages/markdown/markdown.contribution -> Markdown tokenizer
 import "monaco-editor/esm/vs/editor/editor.all.js";
 import "monaco-editor/esm/vs/basic-languages/java/java.contribution";
+import "monaco-editor/esm/vs/basic-languages/kotlin/kotlin.contribution";
 import "monaco-editor/esm/vs/basic-languages/yaml/yaml.contribution";
 import "monaco-editor/esm/vs/basic-languages/xml/xml.contribution";
 import "monaco-editor/esm/vs/basic-languages/markdown/markdown.contribution";
 import * as monaco from "monaco-editor/esm/vs/editor/editor.api";
 import { ensureMiniCodeTheme } from "../editor/MonacoSetup";
-import { ensureJavaProviders, attachJavaDoc, consumePendingReveal, flashTarget, registerModelKey } from "../lsp.js";
+import { ensureJavaProviders, attachJavaDoc, consumePendingReveal, flashTarget, registerModelKey, attachBuildDiagnostics } from "../lsp.js";
 import { createCtrlClickHandler } from "../editor/features/gotoDefinition/ctrlClick";
 import type { FlashCell } from "../editor/features/gotoDefinition/ctrlClick";
+import { useSettingsStore } from "../stores/settingsStore";
 
 // Theme + tokenizer: src/editor/MonacoSetup.ts.
 function ensureTheme() {
@@ -64,6 +66,12 @@ export default function EditorPane({
   // file. Expires on the next task: a later real remount
   // (returning to the tab days later) restores normally.
   const skipRestoreRef = useRef<any>(null);
+  // Editor preferences (live: changing them in Settings applies instantly).
+  const fontFamily = useSettingsStore((s) => s.fontFamily);
+  const fontSize = useSettingsStore((s) => s.fontSize);
+  const tabSize = useSettingsStore((s) => s.tabSize);
+  const insertSpaces = useSettingsStore((s) => s.insertSpaces);
+  const minimap = useSettingsStore((s) => s.minimap);
 
   useEffect(() => {
     ensureTheme();
@@ -94,12 +102,12 @@ export default function EditorPane({
       automaticLayout: true,
       // Virtual tabs (dependencies): read-only, no editing
       readOnly: !!readOnly,
-      fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
-      fontSize: 14,
+      fontFamily,
+      fontSize,
       lineHeight: 22,
-      minimap: { enabled: false },
-      tabSize: 4,
-      insertSpaces: true,
+      minimap: { enabled: minimap },
+      tabSize,
+      insertSpaces,
       renderWhitespace: "selection",
       folding: true,
       scrollBeyondLastLine: false,
@@ -177,7 +185,16 @@ export default function EditorPane({
     });
 
     // Java IntelliSense: providers (once) + document sync
+    // Build files (pom.xml / build.gradle[.kts]): local + Maven Central validation.
     let disposeDoc = null;
+    let disposeBuild = null;
+    try {
+      const uriStr = modelUri ?? fileUri ?? viewStateKey;
+      const nameFromKey = (uriStr ?? "").split(/[\\/]/).pop() ?? "";
+      disposeBuild = attachBuildDiagnostics(monaco, editor, nameFromKey);
+    } catch {
+      disposeBuild = null;
+    }
     let appliedReveal = null; // { lineNumber, column, symbol } of the applied jump
     if (language === "java") {
       ensureJavaProviders(monaco);
@@ -215,6 +232,13 @@ export default function EditorPane({
 
     return () => {
       if (disposeDoc) disposeDoc();
+      if (disposeBuild) {
+        try {
+          disposeBuild();
+        } catch {
+          // best-effort
+        }
+      }
       try {
         flashCell.current();
       } catch {
@@ -258,13 +282,26 @@ export default function EditorPane({
       subscription.dispose();
       // The model is KEPT (not disposed): models live per session
       // and are reused when returning to the tab. Disposing it here forced
-      // re-create + didOpen/didClose on every tab switch and broke the
+      // re-create + didOpen on every tab switch and broke the
       // attachJavaDoc refcount (double didOpen and "not found" docs).
+      // The server document also stays open (project-wide diagnostics).
       editor.dispose();
     };
     // Only recreated when the file changes (EditorPane remounts via `key`)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Live-apply editor preferences without remounting (no cursor/scroll loss).
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    try {
+      editor.updateOptions({ fontFamily, fontSize, minimap: { enabled: minimap } });
+      editor.getModel()?.updateOptions({ tabSize, insertSpaces });
+    } catch {
+      // editor disposed mid-update
+    }
+  }, [fontFamily, fontSize, tabSize, insertSpaces, minimap]);
 
   return <div ref={containerRef} className="h-full w-full" onMouseDown={onFocusEditor} />;
 }

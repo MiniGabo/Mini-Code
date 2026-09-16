@@ -1,5 +1,7 @@
 const { app, BrowserWindow, ipcMain, Menu } = require("electron");
 const path = require("path");
+const { initI18n, setLanguage, t } = require("./i18n.cjs");
+const { initSettings, getAllSettings, setSetting } = require("./settings.cjs");
 
 // Single display name: prevents Electron from generating %APPDATA%/mini-code
 // (package.json name) in addition to %APPDATA%/Mini Code (productName).
@@ -57,6 +59,8 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  initI18n(app);
+  initSettings(app);
   createWindow();
 
   app.on("activate", () => {
@@ -87,9 +91,18 @@ const javaLsp = new JavaLanguageClient({
     if (!mainWindow || mainWindow.isDestroyed()) return;
     mainWindow.webContents.send("lsp:status", {
       state: "error",
-      message: `El servidor Java se detuvo (code=${code})`,
+      message: t("main.stopped", { code }),
     });
   },
+});
+
+// User settings file (settings.json, dev vs packaged paths in settings.cjs).
+// Writing "language" also switches the main-process locale.
+ipcMain.handle("settings:getAll", () => getAllSettings());
+ipcMain.handle("settings:set", (_event, { key, value }) => {
+  const saved = setSetting(key, value);
+  if (key === "language" && typeof value === "string") setLanguage(value);
+  return saved;
 });
 
 // IPC handlers (see electron/ipc/* and electron/external/*)
@@ -99,6 +112,8 @@ const { registerDialogs } = require("./ipc/dialogs.cjs");
 const { registerFileSystem } = require("./ipc/filesystem.cjs");
 const { registerLsp } = require("./ipc/lspIpc.cjs");
 const { registerExternal } = require("./ipc/external.cjs");
+const { registerBuild } = require("./ipc/buildIpc.cjs");
+const { registerUpdater, scheduleAutoChecks } = require("./ipc/updaterIpc.cjs");
 
 const ipcCtx = { ipcMain, getWindow: () => mainWindow };
 registerWindowControls(ipcCtx);
@@ -106,6 +121,9 @@ registerDialogs(ipcCtx);
 registerFileSystem(ipcCtx);
 registerLsp({ ...ipcCtx, javaLsp });
 registerExternal({ ...ipcCtx, app, getRootPath: () => javaLsp.rootPath });
+registerBuild(ipcCtx);
+registerUpdater({ ...ipcCtx, app });
+scheduleAutoChecks(app, () => mainWindow);
 
 app.on("before-quit", () => {
   javaLsp.stop();

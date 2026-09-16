@@ -2,7 +2,7 @@
 // Adding a language = adding an entry here + registering it in
 // languages/registry
 
-export type MonacoLangId = "java" | "yaml" | "xml" | "markdown" | "plaintext";
+export type MonacoLangId = "java" | "yaml" | "xml" | "markdown" | "plaintext" | "kotlin" | "groovy";
 
 export interface FileKind {
   lang: MonacoLangId;
@@ -12,6 +12,8 @@ export interface FileKind {
 
 const EXT_MAP: Array<[string[], MonacoLangId, FileKind["iconTone"]]> = [
   [[".java"], "java", "ember"],
+  [[".gradle.kts", ".kts"], "kotlin", "purple"],
+  [[".gradle"], "groovy", "green"],
   [[".yml", ".yaml"], "yaml", "sky"],
   [[".xml"], "xml", "green"],
   [[".md", ".markdown"], "markdown", "purple"],
@@ -22,7 +24,7 @@ export function kindForFileName(name: string): FileKind {
   for (const [exts, lang, tone] of EXT_MAP) {
     if (exts.some((e) => n.endsWith(e))) return { lang, iconTone: tone };
   }
-  return { lang: "java", iconTone: "gray" };
+  return { lang: "plaintext", iconTone: "gray" };
 }
 
 /** Monaco language by extension (compat with the current langFor). */

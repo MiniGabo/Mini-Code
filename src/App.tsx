@@ -1,6 +1,6 @@
 // App shell: composes stores + services. Domain logic lives in
 // stores/* and services/*; orchestration only here (effects, shortcuts, layout).
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import WelcomeScreen from "./components/WelcomeScreen";
 import Sidebar from "./components/Sidebar";
@@ -8,6 +8,10 @@ import EditorPane from "./components/EditorPane";
 import TabBar from "./components/TabBar";
 import TitleBar from "./components/TitleBar";
 import DecompilingView from "./components/DecompilingView";
+import BuildReloadBanner from "./components/BuildReloadBanner";
+import UpdateBanner from "./components/UpdateBanner";
+import SettingsView from "./components/SettingsView";
+import { isBuildFileName } from "./editor/features/diagnostics/buildDiagnostics";
 import { PanelLeft, AlertTriangle, X } from "lucide-react";
 import {
   setOpenFileByPath,
@@ -17,7 +21,7 @@ import {
   disposeModelForKey,
   disposeAllModels,
 } from "./lsp.js";
-import { fileKeyOf, baseName, isInside, normFs } from "./services/files/paths";
+import { fileKeyOf, baseName, isInside, normFs, fileUriOf } from "./services/files/paths";
 import { langForFileName, sanitizeFileName } from "./services/files/fileTypes";
 import { useWorkspaceStore } from "./stores/workspaceStore";
 import {
@@ -27,6 +31,8 @@ import {
 } from "./stores/editorStore";
 import { useUiStore, SIDEBAR_MIN, SIDEBAR_MAX, SIDEBAR_DEFAULT } from "./stores/uiStore";
 import { useLspStore, ensureFileErrorSubscription } from "./stores/lspStore";
+import { useSettingsStore, ensureSettingsLoaded, t as translate } from "./stores/settingsStore";
+import { useUpdaterStore, shouldShowUpdateBanner } from "./stores/updaterStore";
 import { registerCommand, handleShortcutEvent } from "./extensions/commandRegistry";
 import type { OpenFile, FileKey } from "./types";
 
@@ -46,10 +52,15 @@ export default function App() {
   const pendingClose = useUiStore((s) => s.pendingClose);
   const pendingParent = useUiStore((s) => s.pendingParent);
   const newFolderName = useUiStore((s) => s.newFolderName);
+  const buildReloadPending = useUiStore((s) => s.buildReloadPending);
   const lspStatus = useLspStore((s) => s.lspStatus);
   const fileErrors = useLspStore((s) => s.fileErrors);
+  const language = useSettingsStore((s) => s.language);
+  const [buildReloading, setBuildReloading] = useState(false);
 
   const lspReadyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Root already covered by the workspace diagnostics sweep (reset on every startLsp).
+  const sweptRootRef = useRef<string | null>(null);
   const sidebarWidthRef = useRef(sidebarWidth);
   sidebarWidthRef.current = sidebarWidth;
 
@@ -92,6 +103,18 @@ export default function App() {
     pushRecent(result.path);
   }, []);
 
+  // Settings open as a virtual read-only tab (id "settings", no Monaco model).
+  const handleOpenSettings = useCallback(() => {
+    const { openOrActivate } = useEditorStore.getState();
+    openOrActivate({
+      id: "settings",
+      name: translate("settings.tabTitle"),
+      content: "",
+      savedContent: "",
+      readOnly: true,
+    });
+  }, []);
+
   const startLsp = useCallback(
     async (rootPath: string) => {
       const { setLspStatus } = useLspStore.getState();
@@ -100,17 +123,24 @@ export default function App() {
         clearTimeout(lspReadyTimer.current);
         lspReadyTimer.current = null;
       }
+      // Fresh server, fresh badges: errors from another project (or a
+      // previous session) must not linger until the sweep repopulates them.
+      clearFileErrors();
+      sweptRootRef.current = null;
       setLspStatus("starting");
       try {
         const res = await window.electronAPI?.lspStart?.(rootPath);
         if (res && !res.ok) {
           setLspStatus("error");
-          notify(`IntelliSense no disponible: ${res.error}`);
+          notify(translate("app.lspUnavailable", { error: res.error }));
           return;
         }
+        // Configured JDK invalid: the server still started (auto-detect
+        // fallback), but the user must fix the path in Settings.
+        if (res?.jdkWarning) notify(res.jdkWarning);
       } catch (err) {
         setLspStatus("error");
-        notify(`IntelliSense no disponible: ${String((err as Error)?.message ?? err)}`);
+        notify(translate("app.lspUnavailable", { error: String((err as Error)?.message ?? err) }));
         return;
       }
       setLspStatus("indexing");
@@ -140,7 +170,7 @@ export default function App() {
         readOnly: true,
         modelUri: uri,
         loading: true,
-        progress: "Iniciando…",
+        progress: translate("app.decompileStarting"),
       });
     }
     return { id, uri };
@@ -173,7 +203,7 @@ export default function App() {
       patchFile(id, {
         loading: false,
         progress: null,
-        loadError: (res && res.error) || "No se pudo resolver el símbolo",
+        loadError: (res && res.error) || translate("app.decompileFailed"),
       });
     }
     return { uri };
@@ -201,6 +231,25 @@ export default function App() {
     ensureFileErrorSubscription();
   }, []);
 
+  // Locale for the settings UI (persisted language, loaded once at startup)
+  useEffect(() => {
+    ensureSettingsLoaded();
+  }, []);
+
+  // Auto-updater: subscribe to main-process events (latest.yml) once.
+  const ensureUpdaterSubscription = useUpdaterStore((s) => s.ensureSubscription);
+  useEffect(() => {
+    ensureUpdaterSubscription();
+  }, [ensureUpdaterSubscription]);
+  const showUpdateBanner = useUpdaterStore(shouldShowUpdateBanner);
+
+  // Keep the settings tab label in the current language
+  useEffect(() => {
+    const ed = useEditorStore.getState();
+    if (!ed.openFiles.some((f) => fileKeyOf(f) === "settings")) return;
+    ed.patchFile("settings", { name: translate("settings.tabTitle") });
+  }, [language]);
+
   // First diagnostics confirm the server compiled the project
   useEffect(() => {
     const offDiag = window.electronAPI?.onDiagnostics?.(() => {
@@ -214,7 +263,7 @@ export default function App() {
           lspReadyTimer.current = null;
         }
         useLspStore.getState().setLspStatus("error");
-        useUiStore.getState().notifyError(message ?? "El servidor Java se detuvo inesperadamente.");
+        useUiStore.getState().notifyError(message ?? translate("app.lspStopped"));
       }
     });
     return () => {
@@ -222,6 +271,86 @@ export default function App() {
       offStatus?.();
     };
   }, []);
+
+  // Workspace-wide diagnostics: the Java server only publishes diagnostics
+  // for documents opened via didOpen, so errors in files the user never
+  // opened would stay invisible. Once the server is ready, every project
+  // .java is opened on the server (live buffer text for editor tabs, disk
+  // text otherwise) so errors surface as badges even in closed files.
+  useEffect(() => {
+    if (lspStatus !== "ready") return;
+    const root = useWorkspaceStore.getState().folderTree?.path;
+    if (!root || sweptRootRef.current === root) return;
+    sweptRootRef.current = root;
+    void (async () => {
+      const ed = useEditorStore.getState();
+      const tree = useWorkspaceStore.getState().folderTree;
+      if (!tree || useLspStore.getState().lspStatus !== "ready") return;
+      // Open tabs first: live text (with unsaved edits), and this also
+      // repairs tabs opened before the server started (never didOpen'd).
+      const liveDocs: Array<{ path: string; text: string }> = [];
+      const liveKeys = new Set<string>();
+      for (const f of ed.openFiles) {
+        if (!f.path || f.readOnly || f.loading || f.loadError) continue;
+        if (!f.name.toLowerCase().endsWith(".java")) continue;
+        const key = fileKeyOf(f);
+        liveKeys.add(normFs(f.path));
+        liveDocs.push({ path: f.path, text: ed.liveContents.get(key) ?? f.content ?? "" });
+      }
+      const diskPaths: string[] = [];
+      const walk = (node: { name: string; path: string; type: string; children?: typeof tree.children }) => {
+        if (node.type === "file") {
+          if (node.name.toLowerCase().endsWith(".java") && !liveKeys.has(normFs(node.path))) {
+            diskPaths.push(node.path);
+          }
+        } else {
+          for (const child of node.children ?? []) walk(child);
+        }
+      };
+      walk(tree);
+      // Bound the sweep: every didOpen triggers a server compile, so huge
+      // projects only get diagnostics for the first batch (opened files
+      // always get theirs via the editor anyway).
+      const SWEEP_MAX_FILES = 250;
+      const SWEEP_BATCH = 8;
+      if (diskPaths.length > SWEEP_MAX_FILES) {
+        console.warn(
+          `[diagnostics] sweep capped at ${SWEEP_MAX_FILES} of ${diskPaths.length} closed .java files`
+        );
+      }
+      const openOnServer = async (path: string, text: string) => {
+        try {
+          await window.electronAPI?.lspNotify?.("textDocument/didOpen", {
+            uri: fileUriOf(path),
+            languageId: "java",
+            text,
+          });
+        } catch {
+          // closed project / stopped server mid-sweep: nothing to report
+        }
+      };
+      for (const doc of liveDocs) {
+        if (useLspStore.getState().lspStatus !== "ready") return;
+        await openOnServer(doc.path, doc.text);
+      }
+      const capped = diskPaths.slice(0, SWEEP_MAX_FILES);
+      for (let i = 0; i < capped.length; i += SWEEP_BATCH) {
+        if (useLspStore.getState().lspStatus !== "ready") return;
+        const chunk = capped.slice(i, i + SWEEP_BATCH);
+        await Promise.all(
+          chunk.map(async (p) => {
+            let text: string;
+            try {
+              text = await window.electronAPI!.readFile(p);
+            } catch {
+              return; // unreadable file: no diagnostics for it
+            }
+            await openOnServer(p, text);
+          })
+        );
+      }
+    })();
+  }, [lspStatus]);
 
   const refreshTree = useCallback(async () => {
     const { folderTree: tree } = useWorkspaceStore.getState();
@@ -239,8 +368,55 @@ export default function App() {
     ws.selectFolder(null);
     ws.clearUndo();
     useUiStore.getState().setSidebarVisible(true);
+    useSettingsStore.getState().setLastProject(tree.path);
     startLsp(tree.path);
   }, [startLsp]);
+
+  // Open a known folder path (boot reopen): missing/unreadable -> welcome.
+  const openFolderByPath = useCallback(async (dirPath: string) => {
+    let tree;
+    try {
+      tree = await window.electronAPI!.readDirTree(dirPath);
+    } catch {
+      useSettingsStore.getState().setLastProject(null);
+      return;
+    }
+    const ws = useWorkspaceStore.getState();
+    ws.setFolderTree(tree);
+    ws.setExpanded(new Set([tree.path]));
+    ws.selectFolder(null);
+    ws.clearUndo();
+    useUiStore.getState().setSidebarVisible(true);
+    startLsp(tree.path);
+  }, [startLsp]);
+
+  // Reopen the last project on boot (once, when settings are ready).
+  const settingsReady = useSettingsStore((s) => s.ready);
+  const bootOpenedRef = useRef(false);
+  useEffect(() => {
+    if (!settingsReady || bootOpenedRef.current) return;
+    bootOpenedRef.current = true;
+    const { reopenLastProject, lastProject } = useSettingsStore.getState();
+    if (!reopenLastProject || !lastProject) return;
+    if (useWorkspaceStore.getState().folderTree) return;
+    void openFolderByPath(lastProject);
+  }, [settingsReady, openFolderByPath]);
+
+  // Explicit server-side close for .java docs that truly go away (deleted,
+  // moved, renamed, saved elsewhere). Tab closes must NOT reach the server:
+  // it clears diagnostics on didClose and badges would vanish. Fire-and-forget.
+  const didCloseServerDocs = useCallback((paths: Array<string | undefined>) => {
+    for (const p of paths) {
+      if (!p || !p.toLowerCase().endsWith(".java")) continue;
+      try {
+        void window.electronAPI
+          ?.lspNotify?.("textDocument/didClose", { uri: fileUriOf(p) })
+          ?.catch?.(() => {});
+      } catch {
+        // best-effort
+      }
+    }
+  }, []);
 
   // Shared move/rename engine (undo included)
   const moveAndRemap = useCallback(
@@ -252,14 +428,15 @@ export default function App() {
         p === srcPath || p.startsWith(srcPath + "\\") || p.startsWith(srcPath + "/")
           ? destPath + p.slice(srcPath.length)
           : p;
+      const movedFrom = ed.openFiles.map((f) => f.path);
       try {
         await window.electronAPI!.moveEntry(srcPath, destPath);
       } catch (err) {
         console.error(`No se pudo ${actionLabel}:`, err);
         notify(
           /EEXIST|EPERM/i.test(String((err as Error)?.message ?? err))
-            ? `No se pudo ${actionLabel}: ya existe un elemento con ese nombre en el destino.`
-            : `No se pudo ${actionLabel} el elemento. Inténtalo de nuevo.`
+            ? translate("app.moveExists", { action: actionLabel })
+            : translate("app.moveFailed", { action: actionLabel })
         );
         return false;
       }
@@ -275,10 +452,12 @@ export default function App() {
       if (ed.activeKey) ed.setActive(remap(ed.activeKey));
       if (ws.selectedPath) ws.selectFolder(remap(ws.selectedPath));
       ws.pushUndo({ type: "move", src: srcPath, dest: destPath });
+      // Old locations truly leave the server (new ones open on remount).
+      didCloseServerDocs(movedFrom.filter((p): p is string => !!p && remap(p) !== p));
       refreshTree();
       return true;
     },
-    [refreshTree]
+    [refreshTree, didCloseServerDocs]
   );
 
   const handleMoveEntry = useCallback(
@@ -295,7 +474,7 @@ export default function App() {
       }
       const destPath = destDirPath + sep + base;
       if (destPath === srcPath) return;
-      await moveAndRemap(srcPath, destPath, "mover");
+      await moveAndRemap(srcPath, destPath, translate("app.actionMove"));
     },
     [moveAndRemap]
   );
@@ -309,7 +488,7 @@ export default function App() {
       if (dirEnd <= 0) return;
       const destPath = srcPath.slice(0, dirEnd + 1) + clean;
       if (destPath === srcPath) return;
-      await moveAndRemap(srcPath, destPath, "renombrar");
+      await moveAndRemap(srcPath, destPath, translate("app.actionRename"));
     },
     [moveAndRemap]
   );
@@ -317,6 +496,9 @@ export default function App() {
   const closeFilesInside = useCallback((dirPath: string) => {
     const ed = useEditorStore.getState();
     const next = ed.openFiles.filter((f) => !(f.path && isInside(f.path, dirPath)));
+    const removed = ed.openFiles
+      .map((f) => f.path)
+      .filter((p): p is string => !!p && isInside(p, dirPath));
     for (const f of ed.openFiles) {
       if (f.path && isInside(f.path, dirPath)) {
         ed.liveContents.delete(fileKeyOf(f));
@@ -331,7 +513,9 @@ export default function App() {
     if (ed.activeKey && !next.some((f) => fileKeyOf(f) === ed.activeKey)) {
       ed.setActive(next.length > 0 ? fileKeyOf(next[next.length - 1]) : null);
     }
-  }, []);
+    // Deleted files truly leave the server (their badges clear with them).
+    didCloseServerDocs(removed);
+  }, [didCloseServerDocs]);
 
   const handleDeleteEntry = useCallback(
     async (path: string) => {
@@ -341,7 +525,7 @@ export default function App() {
         await window.electronAPI!.trashEntry(path);
       } catch (err) {
         console.error("No se pudo eliminar:", err);
-        notify("No se pudo eliminar el elemento. Que raro.");
+        notify(translate("app.deleteFailed"));
         return;
       }
       closeFilesInside(path);
@@ -362,7 +546,7 @@ export default function App() {
         await window.electronAPI!.deleteEntry(action.path);
       } catch (err) {
         console.error("No se pudo deshacer:", err);
-        notify("No se pudo deshacer la creación. Que raro.");
+        notify(translate("app.undoCreateFailed"));
         return;
       }
       closeFilesInside(action.path);
@@ -374,7 +558,7 @@ export default function App() {
         await window.electronAPI!.moveEntry(action.dest, action.src);
       } catch (err) {
         console.error("No se pudo deshacer:", err);
-        notify("No se pudo deshacer el movimiento. Que raro.");
+        notify(translate("app.undoMoveFailed"));
         return;
       }
       const ed = useEditorStore.getState();
@@ -394,9 +578,14 @@ export default function App() {
       ed.patchAll((prev) => prev.map((f) => (f.path ? { ...f, path: remap(f.path) } : f)));
       if (ed.activeKey) ed.setActive(remap(ed.activeKey));
       if (ws2.selectedPath) ws2.selectFolder(remap(ws2.selectedPath));
+      didCloseServerDocs(
+        ed.openFiles
+          .map((f) => f.path)
+          .filter((p): p is string => !!p && remap(p) !== p)
+      );
       refreshTree();
     }
-  }, [refreshTree, closeFilesInside]);
+  }, [refreshTree, closeFilesInside, didCloseServerDocs]);
 
   // Sidebar resizing by dragging the side handle
   const startSidebarResize = useCallback((e: ReactMouseEvent) => {
@@ -428,7 +617,7 @@ export default function App() {
     if (!parent) return;
     const ui = useUiStore.getState();
     ui.setPendingParent(parent);
-    ui.setNewFolderName("nueva-carpeta");
+    ui.setNewFolderName(translate("sidebar.defaultFolder"));
   }, []);
 
   const handleConfirmNewFolder = useCallback(async () => {
@@ -450,6 +639,7 @@ export default function App() {
       ws.selectFolder(null);
       ws.clearUndo();
       ui.setSidebarVisible(true);
+      useSettingsStore.getState().setLastProject(tree.path);
       ed.clearLiveContents();
       try {
         disposeAllModels();
@@ -462,8 +652,8 @@ export default function App() {
       console.error("No se pudo crear la carpeta:", err);
       ui.notifyError(
         /EEXIST/i.test(String((err as Error)?.message ?? err))
-          ? `Ya existe una carpeta con ese nombre en "${ui.pendingParent}".`
-          : "No se pudo crear la carpeta. Que raro."
+          ? translate("app.folderExists", { parent: ui.pendingParent })
+          : translate("app.createFolderFailed")
       );
     } finally {
       useUiStore.getState().setPendingParent(null);
@@ -498,6 +688,13 @@ export default function App() {
       // dispose best-effort
     }
     ed.closeFile(key);
+    // Without a tab there is no banner: the notice for that file is discarded
+    // (global reload is still available by saving another build file).
+    try {
+      useUiStore.getState().clearBuildReload(key);
+    } catch {
+      // best-effort
+    }
   }, []);
 
   const handleCloseFileRequest = useCallback(
@@ -520,16 +717,23 @@ export default function App() {
     const ui = useUiStore.getState();
     const key = fileKeyOf(file);
     const live = ed.liveContents.get(key) ?? file.content ?? "";
+    // Saving a build file marks it as pending LSP reload.
+    const markBuildIfNeeded = (name: string, k: string) => {
+      if (!isBuildFileName(name)) return;
+      if (!useWorkspaceStore.getState().folderTree) return;
+      ui.markBuildDirty(k, name);
+    };
     if (file.path) {
       try {
         await window.electronAPI!.writeFile(file.path, live);
       } catch (err) {
         console.error("No se pudo guardar:", err);
-        ui.notifyError("No se pudo guardar el archivo. Que raro.");
+        ui.notifyError(translate("app.saveFailed"));
         return false;
       }
       ed.patchFile(key, { content: live, savedContent: live });
       ed.pushRecent(file.path);
+      markBuildIfNeeded(file.name, key);
       return true;
     }
     let savedPath: string | null;
@@ -537,7 +741,7 @@ export default function App() {
       savedPath = await window.electronAPI!.saveFileAs(live, file.name);
     } catch (err) {
       console.error("No se pudo guardar:", err);
-      ui.notifyError("No se pudo guardar el archivo. Que raro.");
+      ui.notifyError(translate("app.saveFailed"));
       return false;
     }
     if (!savedPath) return false;
@@ -561,6 +765,7 @@ export default function App() {
     ed.setActive(savedPath);
     ed.pushRecent(savedPath);
     refreshTree();
+    markBuildIfNeeded(name, savedPath);
     return true;
   }, [refreshTree]);
 
@@ -619,7 +824,12 @@ export default function App() {
     ed.setActive(savedPath);
     ed.pushRecent(savedPath);
     refreshTree();
-  }, [refreshTree]);
+    // The old location (if any) truly leaves the server.
+    didCloseServerDocs([file.path]);
+    if (isBuildFileName(name) && useWorkspaceStore.getState().folderTree) {
+      useUiStore.getState().markBuildDirty(savedPath, name);
+    }
+  }, [refreshTree, didCloseServerDocs]);
 
   const handleRestart = useCallback(() => {
     cancelLiveFlush();
@@ -634,11 +844,51 @@ export default function App() {
     ed.clearViewStates();
     useWorkspaceStore.getState().resetWorkspace();
     useUiStore.getState().resetForRestart();
+    useSettingsStore.getState().setLastProject(null);
     clearLspTimer();
+    sweptRootRef.current = null;
     useLspStore.getState().setLspStatus("off");
     clearFileErrors();
     window.electronAPI?.lspStop?.().catch(() => {});
   }, [clearLspTimer]);
+
+  // Reloads the project after saving a build file: restarts the Java LSP
+  // so it re-reads pom.xml / build.gradle[.kts] and re-opens the open .java files.
+  const handleBuildReload = useCallback(async () => {
+    const root = useWorkspaceStore.getState().folderTree?.path;
+    if (!root) {
+      useUiStore.getState().clearAllBuildReload();
+      return;
+    }
+    setBuildReloading(true);
+    try {
+      await window.electronAPI?.lspStop?.().catch(() => {});
+      clearLspTimer();
+      await startLsp(root);
+      // Stop cleared the server docs; re-open the visible .java files
+      // with their live content so the server knows them again.
+      const ed = useEditorStore.getState();
+      for (const f of ed.openFiles) {
+        if (f.readOnly || f.loading || f.loadError) continue;
+        if (!f.path || !f.name.toLowerCase().endsWith(".java")) continue;
+        const key = fileKeyOf(f);
+        const text = ed.liveContents.get(key) ?? f.content ?? "";
+        const uri = fileUriOf(f.path);
+        try {
+          await window.electronAPI?.lspNotify?.("textDocument/didOpen", {
+            uri,
+            languageId: "java",
+            text,
+          });
+        } catch {
+          // best-effort per file
+        }
+      }
+      useUiStore.getState().clearAllBuildReload();
+    } finally {
+      setBuildReloading(false);
+    }
+  }, [startLsp, clearLspTimer]);
 
   // Global shortcuts via command registry (extensions/commandRegistry)
   useEffect(() => {
@@ -656,19 +906,20 @@ export default function App() {
       if (key) handleCloseFileRequest(key);
     };
     const unsubs = [
-      registerCommand({ id: "file.save", title: "Guardar", shortcut: "ctrl+s", run: () => void handleSave() }),
-      registerCommand({ id: "file.saveAs", title: "Guardar como", shortcut: "ctrl+shift+s", run: () => void handleSaveAs() }),
-      registerCommand({ id: "file.open", title: "Abrir archivo", shortcut: "ctrl+o", run: () => void handleOpenFile() }),
-      registerCommand({ id: "folder.open", title: "Abrir carpeta", shortcut: "ctrl+shift+o", run: () => void handleOpenFolder() }),
-      registerCommand({ id: "folder.new", title: "Nueva carpeta", shortcut: "ctrl+n", run: () => void handleNewFolder() }),
-      registerCommand({ id: "file.closeActive", title: "Cerrar pestaña", shortcut: "ctrl+w", run: closeActive }),
+      registerCommand({ id: "file.save", title: translate("commands.save"), shortcut: "ctrl+s", run: () => void handleSave() }),
+      registerCommand({ id: "file.saveAs", title: translate("commands.saveAs"), shortcut: "ctrl+shift+s", run: () => void handleSaveAs() }),
+      registerCommand({ id: "file.open", title: translate("commands.openFile"), shortcut: "ctrl+o", run: () => void handleOpenFile() }),
+      registerCommand({ id: "folder.open", title: translate("commands.openFolder"), shortcut: "ctrl+shift+o", run: () => void handleOpenFolder() }),
+      registerCommand({ id: "folder.new", title: translate("commands.newFolder"), shortcut: "ctrl+n", run: () => void handleNewFolder() }),
+      registerCommand({ id: "file.closeActive", title: translate("commands.closeActive"), shortcut: "ctrl+w", run: closeActive }),
       registerCommand({
         id: "sidebar.toggle",
-        title: "Mostrar/ocultar explorador",
+        title: translate("commands.toggleSidebar"),
         shortcut: "ctrl+shift+e",
         run: () => useUiStore.getState().toggleSidebar(),
       }),
-      registerCommand({ id: "explorer.undo", title: "Deshacer (explorador)", shortcut: "ctrl+z", run: undoGuarded }),
+      registerCommand({ id: "explorer.undo", title: translate("commands.undo"), shortcut: "ctrl+z", run: undoGuarded }),
+      registerCommand({ id: "settings.open", title: translate("commands.settings"), shortcut: "ctrl+,", run: () => handleOpenSettings() }),
     ];
     const bindings: Record<string, string> = {
       "ctrl+s": "file.save",
@@ -679,6 +930,7 @@ export default function App() {
       "ctrl+w": "file.closeActive",
       "ctrl+shift+e": "sidebar.toggle",
       "ctrl+z": "explorer.undo",
+      "ctrl+,": "settings.open",
     };
     const handler = (e: KeyboardEvent) => handleShortcutEvent(e, bindings, isMac);
     window.addEventListener("keydown", handler);
@@ -686,13 +938,19 @@ export default function App() {
       window.removeEventListener("keydown", handler);
       for (const off of unsubs) off();
     };
-  }, [handleSave, handleSaveAs, handleOpenFile, handleOpenFolder, handleNewFolder, handleCloseFileRequest, handleUndo]);
+  }, [handleSave, handleSaveAs, handleOpenFile, handleOpenFolder, handleNewFolder, handleCloseFileRequest, handleUndo, handleOpenSettings]);
 
   const showWelcome = !activeFile;
+  const activeBuildPending =
+    activeFile && isBuildFileName(activeFile.name) && activeKey
+      ? buildReloadPending[activeKey] ?? null
+      : null;
+  const showBuildBanner = !!activeBuildPending && !showWelcome;
 
   return (
     <div className="flex h-screen w-screen flex-col bg-graphite-950 text-graphite-300 font-ui">
-      <TitleBar lspStatus={lspStatus} />
+      <TitleBar lspStatus={lspStatus} onOpenSettings={handleOpenSettings} />
+      {showUpdateBanner && <UpdateBanner />}
 
       <div className="flex flex-1 min-h-0">
         {sidebarVisible && folderTree && (
@@ -720,7 +978,7 @@ export default function App() {
             <div
               onMouseDown={startSidebarResize}
               onDoubleClick={resetSidebarWidth}
-              title="Arrastrar para redimensionar (doble clic para restablecer)"
+              title={translate("app.resizeHint")}
               className="relative z-10 -ml-1 w-1 shrink-0 cursor-col-resize bg-transparent hover:bg-ember-500/60 active:bg-ember-500/80 transition-colors"
             />
           </>
@@ -732,7 +990,7 @@ export default function App() {
               {!sidebarVisible && folderTree && (
                 <button
                   onClick={() => useUiStore.getState().setSidebarVisible(true)}
-                  title="Mostrar explorador (Ctrl+Shift+E)"
+                  title={translate("sidebar.showExplorer")}
                   className="flex shrink-0 items-center border-r border-graphite-800 px-2.5 text-graphite-400 hover:text-ember-400"
                 >
                   <PanelLeft size={14} />
@@ -750,7 +1008,7 @@ export default function App() {
           {showWelcome && folderTree && !sidebarVisible && (
             <button
               onClick={() => useUiStore.getState().setSidebarVisible(true)}
-              title="Mostrar explorador (Ctrl+Shift+E)"
+              title={translate("sidebar.showExplorer")}
               className="absolute left-2 top-2 z-10 rounded-md bg-graphite-800/90 p-1.5 text-graphite-300 hover:text-ember-400 hover:bg-graphite-700 border border-graphite-700"
             >
               <PanelLeft size={16} />
@@ -774,6 +1032,8 @@ export default function App() {
             />
           ) : activeFile!.loading || activeFile!.loadError ? (
             <DecompilingView file={activeFile!} />
+          ) : activeKey === "settings" ? (
+            <SettingsView />
           ) : (
             <EditorPane
               key={fileKeyOf(activeFile!)}
@@ -791,6 +1051,14 @@ export default function App() {
               onFocusEditor={() => useWorkspaceStore.getState().selectFolder(null)}
             />
           )}
+          {showBuildBanner && activeKey && (
+            <BuildReloadBanner
+              fileName={activeBuildPending!.name}
+              reloading={buildReloading}
+              onReload={() => void handleBuildReload()}
+              onDismiss={() => useUiStore.getState().clearBuildReload(activeKey)}
+            />
+          )}
         </div>
       </div>
 
@@ -802,29 +1070,28 @@ export default function App() {
           }}
         >
           <div className="w-96 rounded-lg border border-graphite-700 bg-graphite-800 p-4 shadow-2xl">
-            <h3 className="text-[14px] font-semibold text-graphite-100">¿Cerrar sin guardar?</h3>
+            <h3 className="text-[14px] font-semibold text-graphite-100">{translate("app.closeTitle")}</h3>
             <p className="mt-1.5 text-[12.5px] leading-snug text-graphite-300">
-              "{pendingClose.name}" tiene cambios sin guardar. Si lo cierras ahora, perderás lo
-              editado.
+              {translate("app.closeBody", { name: pendingClose.name })}
             </p>
             <div className="mt-4 flex justify-end gap-2">
               <button
                 onClick={() => useUiStore.getState().setPendingClose(null)}
                 className="rounded-md border border-graphite-600 px-3 py-1.5 text-[12.5px] text-graphite-200 hover:bg-graphite-700"
               >
-                Cancelar
+                {translate("common.cancel")}
               </button>
               <button
                 onClick={handleDiscardAndClose}
                 className="rounded-md border border-red-500/50 px-3 py-1.5 text-[12.5px] text-red-400 hover:bg-red-500/10"
               >
-                Cerrar sin guardar
+                {translate("app.closeDiscard")}
               </button>
               <button
                 onClick={handleSaveAndClose}
                 className="rounded-md bg-ember-500 px-3 py-1.5 text-[12.5px] font-medium text-graphite-950 hover:bg-ember-400"
               >
-                Guardar y cerrar
+                {translate("app.closeSave")}
               </button>
             </div>
           </div>
@@ -842,7 +1109,7 @@ export default function App() {
               <p className="flex-1 text-[12.5px] leading-snug text-graphite-100">{t.message}</p>
               <button
                 onClick={() => dismissToast(t.id)}
-                title="Cerrar aviso"
+                title={translate("common.dismissToast")}
                 className="rounded p-0.5 text-graphite-500 hover:bg-graphite-700 hover:text-graphite-200"
               >
                 <X size={13} />

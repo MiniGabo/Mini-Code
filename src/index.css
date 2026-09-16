@@ -177,3 +177,7 @@ kbd {
 .toast-in {
   animation: toast-in 0.18s ease-out;
 }
+
+.banner-in {
+  animation: toast-in 0.22s ease-out;
+}

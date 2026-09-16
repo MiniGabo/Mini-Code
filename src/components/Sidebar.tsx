@@ -17,6 +17,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import FileIcon from "./FileIcon";
 import type { FileTreeNode } from "../types";
+import { useT } from "../stores/settingsStore";
 
 function fileIcon(name: string) {
   return <FileIcon name={name} size={14} />;
@@ -29,6 +30,17 @@ function parentDir(p: string): string {
 
 function baseName(p: string): string {
   return p.split(/[\\/]/).pop() ?? p;
+}
+
+// Total errors in a subtree (file -> its own badge; folder -> sum of all
+// files below it), so errors stay visible even when their file is inside a
+// collapsed folder.
+function subtreeErrors(node: FileTreeNode, fileErrors?: Record<string, number>): number {
+  if (!fileErrors) return 0;
+  if (node.type === "file") return fileErrors[node.path.toLowerCase()] ?? 0;
+  let total = 0;
+  for (const child of node.children ?? []) total += subtreeErrors(child, fileErrors);
+  return total;
 }
 
 function MenuItem({
@@ -139,9 +151,14 @@ function TreeNode({
   onRowContextMenu,
   fileErrors,
 }: TreeNodeProps) {
+  const t = useT();
   const isFolder = node.type === "folder";
   const isOpen = expanded.has(node.path);
-  const errCount = !isFolder ? (fileErrors?.[node.path.toLowerCase()] ?? 0) : 0;
+  // Folders only report errors while collapsed (hiding them from view):
+  // an expanded folder already shows its files with their own badges.
+  const errCount = isFolder
+    ? (!isOpen ? subtreeErrors(node, fileErrors) : 0)
+    : (fileErrors?.[node.path.toLowerCase()] ?? 0);
 
   const rowClass = (extra = "") =>
     `tree-row${extra ? ` ${extra}` : ""}${
@@ -182,6 +199,14 @@ function TreeNode({
             onConfirmRename={onConfirmRename}
             onCancelRename={onCancelRename}
           />
+          {errCount > 0 && (
+            <span
+              className="ml-auto shrink-0 rounded-full bg-red-500/20 px-1.5 text-[11px] font-medium text-red-400"
+              title={t(errCount === 1 ? "sidebar.folderError_one" : "sidebar.folderError_other", { count: errCount })}
+            >
+              {errCount}
+            </span>
+          )}
         </div>
         {isOpen &&
           node.children?.map((child) => (
@@ -236,7 +261,7 @@ function TreeNode({
       {errCount > 0 && (
         <span
           className="ml-auto shrink-0 rounded-full bg-red-500/20 px-1.5 text-[11px] font-medium text-red-400"
-          title={`${errCount} error${errCount === 1 ? "" : "es"}`}
+          title={t(errCount === 1 ? "sidebar.error_one" : "sidebar.error_other", { count: errCount })}
         >
           {errCount}
         </span>
@@ -286,6 +311,7 @@ export default function Sidebar({
   onToggleSidebar,
   fileErrors,
 }: SidebarProps) {
+  const t = useT();
   const [creating, setCreating] = useState<"file" | "folder" | null>(null);
   const [draftName, setDraftName] = useState("");
   const [renaming, setRenaming] = useState<{ path: string; name: string } | null>(null);
@@ -294,7 +320,7 @@ export default function Sidebar({
   const [dragOverRoot, setDragOverRoot] = useState(false);
   // Creation target: selected folder, or root if nothing is selected
   const targetDir = selectedPath ?? tree.path;
-  const targetLabel = selectedPath ? baseName(selectedPath) : `${tree.name} (raíz)`;
+  const targetLabel = selectedPath ? baseName(selectedPath) : `${tree.name} ${t("sidebar.rootSuffix")}`;
 
   const toggle = (path: string) => {
     onToggleFolder(path);
@@ -367,7 +393,7 @@ export default function Sidebar({
   const startCreate = (kind: "file" | "folder") => {
     setRenaming(null);
     setCreating(kind);
-    setDraftName(kind === "file" ? "NuevoArchivo.java" : "nueva-carpeta");
+    setDraftName(kind === "file" ? t("sidebar.defaultFile") : t("sidebar.defaultFolder"));
   };
 
   // Inline rename: only Enter confirms, everything else cancels
@@ -446,11 +472,11 @@ export default function Sidebar({
     } catch (err) {
       console.error("No se pudo crear:", err);
       const msg = err instanceof Error ? err.message : String(err);
-      const what = creating === "file" ? "archivo" : "carpeta";
+      const what = creating === "file" ? t("sidebar.whatFile") : t("sidebar.whatFolder");
       onError(
         /EEXIST/i.test(msg)
-          ? `Ya existe un ${what} con el nombre "${name}" en ${targetLabel}.`
-          : `No se pudo crear el ${what} "${name}". Que raro.`
+          ? t("sidebar.createExists", { what, name, where: targetLabel })
+          : t("sidebar.createFailed", { what, name })
       );
     } finally {
       setCreating(null);
@@ -476,35 +502,35 @@ export default function Sidebar({
         <span className="truncate">{tree.name.toUpperCase()}</span>
         <div className="flex items-center gap-0.5 text-graphite-400">
           <button
-            title="Nuevo archivo"
+            title={t("sidebar.newFile")}
             onClick={() => startCreate("file")}
             className="rounded p-1 hover:bg-graphite-800 hover:text-ember-400"
           >
             <FilePlus size={14} />
           </button>
           <button
-            title="Nueva carpeta"
+            title={t("sidebar.newFolder")}
             onClick={() => startCreate("folder")}
             className="rounded p-1 hover:bg-graphite-800 hover:text-ember-400"
           >
             <FolderPlus size={14} />
           </button>
           <button
-            title="Actualizar"
+            title={t("sidebar.refresh")}
             onClick={onRefresh}
             className="rounded p-1 hover:bg-graphite-800 hover:text-ember-400"
           >
             <RefreshCcw size={13} />
           </button>
           <button
-            title="Nueva pestaña: cerrar todo y reiniciar el editor"
+            title={t("sidebar.restart")}
             onClick={onRestart}
             className="rounded p-1 hover:bg-graphite-800 hover:text-ember-400"
           >
             <RotateCcw size={14} />
           </button>
           <button
-            title="Ocultar explorador (Ctrl+Shift+E)"
+            title={t("sidebar.hideExplorer")}
             onClick={onToggleSidebar}
             className="rounded p-1 hover:bg-graphite-800 hover:text-ember-400"
           >
@@ -522,7 +548,7 @@ export default function Sidebar({
         {creating && (
           <div className="px-2 pb-1" style={{ paddingLeft: 8 }}>
             <p className="pb-1 text-[11px] text-graphite-500">
-              Crear en: <span className="text-ember-400">{targetLabel}</span>
+              {t("sidebar.createIn")} <span className="text-ember-400">{targetLabel}</span>
             </p>
             <input
               autoFocus
@@ -533,11 +559,11 @@ export default function Sidebar({
                 if (e.key === "Escape") cancelCreate();
               }}
               onBlur={cancelCreate}
-              placeholder={creating === "file" ? "Nombre del archivo" : "Nombre de la carpeta"}
+              placeholder={creating === "file" ? t("sidebar.filePlaceholder") : t("sidebar.folderPlaceholder")}
               className="w-full rounded border border-ember-500/60 bg-graphite-800 px-2 py-1 text-[13px] text-graphite-100 outline-none"
             />
             <p className="pt-1 text-[11px] text-graphite-400">
-              Enter para crear · clic fuera o Esc para cancelar
+              {t("sidebar.createHint")}
             </p>
           </div>
         )}
@@ -566,7 +592,7 @@ export default function Sidebar({
           />
         ))}
         {tree.children?.length === 0 && !creating && (
-          <p className="px-3 py-2 text-[12px] text-graphite-600">Carpeta vacía.</p>
+          <p className="px-3 py-2 text-[12px] text-graphite-600">{t("sidebar.emptyFolder")}</p>
         )}
       </div>
 
@@ -582,18 +608,18 @@ export default function Sidebar({
             <>
               <MenuItem
                 icon={FolderOpen}
-                label="Abrir"
+                label={t("sidebar.menu.open")}
                 onClick={() => onOpenFile(menu.path)}
               />
               <MenuDivider />
               <MenuItem
                 icon={Pencil}
-                label="Renombrar"
+                label={t("sidebar.menu.rename")}
                 onClick={() => startRename(menu.path)}
               />
               <MenuItem
                 icon={Trash2}
-                label="Eliminar"
+                label={t("sidebar.menu.delete")}
                 danger
                 onClick={() => onDeleteEntry(menu.path)}
               />
@@ -603,23 +629,23 @@ export default function Sidebar({
             <>
               <MenuItem
                 icon={FilePlus}
-                label="Nuevo archivo"
+                label={t("sidebar.menu.newFile")}
                 onClick={() => createHere("file", menu.path)}
               />
               <MenuItem
                 icon={FolderPlus}
-                label="Nueva carpeta"
+                label={t("sidebar.menu.newFolder")}
                 onClick={() => createHere("folder", menu.path)}
               />
               <MenuDivider />
               <MenuItem
                 icon={Pencil}
-                label="Renombrar"
+                label={t("sidebar.menu.rename")}
                 onClick={() => startRename(menu.path)}
               />
               <MenuItem
                 icon={Trash2}
-                label="Eliminar"
+                label={t("sidebar.menu.delete")}
                 danger
                 onClick={() => onDeleteEntry(menu.path)}
               />
@@ -629,12 +655,12 @@ export default function Sidebar({
             <>
               <MenuItem
                 icon={FilePlus}
-                label="Nuevo archivo"
+                label={t("sidebar.menu.newFile")}
                 onClick={() => createHere("file", tree.path)}
               />
               <MenuItem
                 icon={FolderPlus}
-                label="Nueva carpeta"
+                label={t("sidebar.menu.newFolder")}
                 onClick={() => createHere("folder", tree.path)}
               />
             </>

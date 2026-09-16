@@ -111,9 +111,16 @@ function modulesImageOf(home) {
   }
   return null;
 }
-async function findJdkSource(fqn) {
+async function findJdkSource(fqn, preferredHome) {
   const rels = entryCandidates(fqn, ".java");
-  for (const home of jdkHomes()) {
+  let homes = jdkHomes();
+  // Build-selected JDK first (same list, just reordered): sources match the
+  // project's Java version instead of the first detected home.
+  if (preferredHome) {
+    const key = String(preferredHome).toLowerCase();
+    homes = [...homes.filter((h) => h.toLowerCase() === key), ...homes.filter((h) => h.toLowerCase() !== key)];
+  }
+  for (const home of homes) {
     const srczip = srcZipOf(home);
     if (!srczip) continue;
     let entries = [];

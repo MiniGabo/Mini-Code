@@ -1,7 +1,7 @@
 {
   "name": "mini-code",
   "productName": "Mini Code",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Lightweight code editor, built with Electron + Monaco",
   "author": "Mini Gabo",
   "license": "MIT",
@@ -59,6 +59,13 @@
         "filter": [
           "fernflower/fernflower.jar",
           "java-language-server/dist/classpath/*.jar"
+        ]
+      },
+      {
+        "from": "src/i18n/locales",
+        "to": "locales",
+        "filter": [
+          "*.json"
         ]
       }
     ],

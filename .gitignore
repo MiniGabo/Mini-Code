@@ -1,6 +1,8 @@
 node_modules
 dist
 release
+# Dev user settings
+settings.json
 # Vendored Java LSP: source only; runtime jars are regenerated with Maven
 lsp-servers/java-language-server/dist/
 .DS_Store

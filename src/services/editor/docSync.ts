@@ -1,4 +1,9 @@
-// Syncs a Java model with the server (didOpen/didChange/didClose).
+// Syncs a Java model with the server (didOpen + debounced didChange).
+// The server is project-wide: documents stay open on the server after the
+// tab unmounts (tab switch or close), so their diagnostics keep showing as
+// badges. The server clears diagnostics on didClose, hence no didClose is
+// sent here; explicit closes happen only when a file is deleted, moved or
+// renamed (see didCloseServerDocs in App).
 import { trackMonaco } from "./modelRegistry";
 const openDocRefs = new Map(); // docUri -> count
 function attachJavaDoc(monaco: any, editor: any, fileUri: any) {
@@ -43,10 +48,11 @@ function attachJavaDoc(monaco: any, editor: any, fileUri: any) {
     disposed = true;
     if (timer) clearTimeout(timer);
     subscription.dispose();
+    // Bookkeeping only: the document stays open on the server (project-wide
+    // diagnostics). Re-mounting re-opens (server maps it to didChange).
     const left = (openDocRefs.get(docUri) ?? 1) - 1;
     if (left <= 0) {
       openDocRefs.delete(docUri);
-      window.electronAPI?.lspNotify("textDocument/didClose", { uri: docUri }).catch?.(() => {});
     } else {
       openDocRefs.set(docUri, left);
     }

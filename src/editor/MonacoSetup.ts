@@ -111,6 +111,46 @@ export const javaLanguage = {
 export function ensureMiniCodeTheme(monaco: any): void {
   if (themeDefined) return;
   monaco.languages.setMonarchTokensProvider("java", javaLanguage);
+  // Groovy (build.gradle) has no Monaco basic-language in this version:
+  // minimal Monarch based on Java keywords + Gradle configs + single/double strings.
+  try {
+    monaco.languages.register({ id: "groovy" });
+  } catch {
+    // already registered
+  }
+  monaco.languages.setMonarchTokensProvider("groovy", {
+    defaultToken: "",
+    tokenPostfix: ".groovy",
+    keywords: [
+      "def", "as", "in", "assert", "trait", "extends", "implements",
+      "package", "import", "class", "interface", "enum",
+      "if", "else", "for", "while", "do", "switch", "case", "default",
+      "break", "continue", "return", "try", "catch", "finally", "throw",
+      "new", "this", "super", "true", "false", "null",
+      "static", "final", "public", "protected", "private", "abstract",
+      "synchronized", "default",
+    ],
+    tokenizer: {
+      root: [
+        [/\/\/.*$/, "comment"],
+        [/\/\*/, "comment", "@comment"],
+        [/"([^"\\]|\\.)*"/, "string"],
+        [/'([^'\\]|\\.)*'/, "string"],
+        [/\b(implementation|api|compileOnly|runtimeOnly|testImplementation|testApi|plugins|dependencies|repositories|mavenCentral|google|gradlePluginPortal)\b/, "keyword"],
+        [/[A-Z][\w$]*/, "type"],
+        [/[a-zA-Z_$][\w$]*(?=\s*\()/, "method"],
+        [/[a-zA-Z_$][\w$]*/, { cases: { "@keywords": "keyword", "@default": "variable" } }],
+        [/[{}()\[\]]/, "@brackets"],
+        [/[;,.]/, "delimiter"],
+        [/\d+(\.\d+)?/, "number"],
+      ],
+      comment: [
+        [/[^\/*]+/, "comment"],
+        [/\*\//, "comment", "@pop"],
+        [/[\/*]/, "comment"],
+      ],
+    },
+  });
   monaco.editor.defineTheme("mini-code-dark", {
     base: "vs-dark",
     inherit: true,

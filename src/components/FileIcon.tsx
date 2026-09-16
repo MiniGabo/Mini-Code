@@ -12,7 +12,7 @@ const TONE_CLASS: Record<string, string> = {
   gray: "text-graphite-400",
 };
 
-const CODE_EXTS = [".java", ".class", ".yml", ".yaml", ".xml", ".md", ".markdown"];
+const CODE_EXTS = [".java", ".class", ".yml", ".yaml", ".xml", ".md", ".markdown", ".gradle", ".kts"];
 
 export default function FileIcon({
   name,

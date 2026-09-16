@@ -1,12 +1,20 @@
 // Custom title bar (frameless window).
 import { useEffect, useState } from "react";
-import { Coffee, Minus, Square, Copy, X } from "lucide-react";
+import { Coffee, Minus, Square, Copy, X, Settings } from "lucide-react";
 import type { LspStatus } from "../types";
+import { useT } from "../stores/settingsStore";
 
 const api = () => (typeof window !== "undefined" ? window.electronAPI : undefined);
 
-export default function TitleBar({ lspStatus }: { lspStatus: LspStatus }) {
+export default function TitleBar({
+  lspStatus,
+  onOpenSettings,
+}: {
+  lspStatus: LspStatus;
+  onOpenSettings: () => void;
+}) {
   const [maximized, setMaximized] = useState(false);
+  const t = useT();
 
   useEffect(() => {
     const electron = api();
@@ -36,12 +44,12 @@ export default function TitleBar({ lspStatus }: { lspStatus: LspStatus }) {
           className="titlebar-no-drag mr-2 flex items-center gap-1.5 rounded-full border border-graphite-800 bg-graphite-900 px-2.5 py-1"
           title={
             lspStatus === "ready"
-              ? "IntelliSense Java listo"
+              ? t("titlebar.lsp.readyTitle")
               : lspStatus === "error"
-                ? "IntelliSense no disponible (¿java en el PATH?)"
+                ? t("titlebar.lsp.errorTitle")
                 : lspStatus === "starting"
-                  ? "Iniciando servidor Java…"
-                  : "Indexando proyecto Java…"
+                  ? t("titlebar.lsp.startingTitle")
+                  : t("titlebar.lsp.indexingTitle")
           }
         >
           <span
@@ -55,30 +63,33 @@ export default function TitleBar({ lspStatus }: { lspStatus: LspStatus }) {
           />
           <span className="text-[11px] text-graphite-400">
             {lspStatus === "ready"
-              ? "Java listo"
+              ? t("titlebar.lsp.ready")
               : lspStatus === "error"
-                ? "Java no disponible"
+                ? t("titlebar.lsp.error")
                 : lspStatus === "starting"
-                  ? "Iniciando Java…"
-                  : "Indexando…"}
+                  ? t("titlebar.lsp.starting")
+                  : t("titlebar.lsp.indexing")}
           </span>
         </div>
       )}
 
       <div className="titlebar-no-drag flex h-full items-stretch" onDoubleClick={(e) => e.stopPropagation()}>
-        <button className={btn} title="Minimizar" onClick={() => api()?.minimizeWindow?.()}>
+        <button className={btn} title={t("titlebar.openSettings")} onClick={onOpenSettings}>
+          <Settings size={14} />
+        </button>
+        <button className={btn} title={t("titlebar.minimize")} onClick={() => api()?.minimizeWindow?.()}>
           <Minus size={14} />
         </button>
         <button
           className={btn}
-          title={maximized ? "Restaurar" : "Maximizar"}
+          title={maximized ? t("titlebar.restore") : t("titlebar.maximize")}
           onClick={() => api()?.toggleMaximize?.()}
         >
           {maximized ? <Copy size={12} /> : <Square size={12} />}
         </button>
         <button
           className={`${btn} hover:!bg-[#e81123] hover:!text-white`}
-          title="Cerrar"
+          title={t("titlebar.close")}
           onClick={() => api()?.closeWindow?.()}
         >
           <X size={15} />

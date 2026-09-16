@@ -1,14 +1,15 @@
+const { t } = require("../i18n.cjs");
 function register({ ipcMain, javaLsp }) {
   function lspReadyGuard() {
     if (!javaLsp.isRunning() || !javaLsp.ready) {
-      throw new Error("IntelliSense no disponible: el servidor Java no está en ejecución (reabre la carpeta)");
+      throw new Error(t("main.lspNotRunning"));
     }
   }
 
   ipcMain.handle("lsp:start", async (_event, rootPath) => {
     try {
       const capabilities = await javaLsp.start(rootPath);
-      return { ok: true, capabilities };
+      return { ok: true, capabilities, jdkWarning: javaLsp.jdkWarning ?? null };
     } catch (err) {
       return { ok: false, error: err.message };
     }
@@ -30,7 +31,7 @@ function register({ ipcMain, javaLsp }) {
       "textDocument/documentSymbol",
       "textDocument/codeAction",
     ]);
-    if (!allow.has(method)) throw new Error(`Método LSP no permitido: ${method}`);
+    if (!allow.has(method)) throw new Error(t("main.methodNotAllowed", { method }));
     const result = await javaLsp.request(method, params, 20000);
     return result;
   });
@@ -41,7 +42,7 @@ function register({ ipcMain, javaLsp }) {
       "textDocument/didChange",
       "textDocument/didClose",
     ]);
-    if (!allow.has(method)) throw new Error(`Notificación LSP no permitida: ${method}`);
+    if (!allow.has(method)) throw new Error(t("main.notifyNotAllowed", { method }));
     if (method === "textDocument/didOpen") {
       javaLsp.didOpen(params.uri, params.languageId, params.text);
     } else if (method === "textDocument/didChange") {

@@ -1,5 +1,6 @@
 // Welcome screen.
 import { FolderPlus, FolderOpen, FileCode2, Coffee } from "lucide-react";
+import { useT } from "../stores/settingsStore";
 
 const isMac =
   typeof navigator !== "undefined" && navigator.platform.toUpperCase().includes("MAC");
@@ -59,6 +60,7 @@ export default function WelcomeScreen({
   onOpenFile,
   onOpenFolder,
 }: WelcomeScreenProps) {
+  const t = useT();
   return (
     <div className="flex h-full w-full items-center justify-center overflow-hidden bg-graphite-950">
       <div className="flex w-full max-w-[320px] flex-col items-center px-6 text-center">
@@ -70,19 +72,19 @@ export default function WelcomeScreen({
         <div className="mt-10 w-full">
           <StartAction
             icon={FolderPlus}
-            label="Nueva carpeta..."
+            label={t("welcome.newFolder")}
             shortcut={isMac ? ["⌘", "N"] : ["Ctrl", "N"]}
             onClick={onNewFolder}
           />
           <StartAction
             icon={FileCode2}
-            label="Abrir archivo..."
+            label={t("welcome.openFile")}
             shortcut={isMac ? ["⌘", "O"] : ["Ctrl", "O"]}
             onClick={onOpenFile}
           />
           <StartAction
             icon={FolderOpen}
-            label="Abrir carpeta..."
+            label={t("welcome.openFolder")}
             shortcut={isMac ? ["⌘", "⇧", "O"] : ["Ctrl", "Shift", "O"]}
             onClick={onOpenFolder}
           />
@@ -92,7 +94,7 @@ export default function WelcomeScreen({
         {pendingParent && (
           <div className="mt-4 w-full rounded-lg border border-ember-500/40 bg-graphite-850 p-3 text-left">
             <p className="truncate text-[11px] text-graphite-500" title={pendingParent}>
-              Crear en: {pendingParent}
+              {t("welcome.createIn")} {pendingParent}
             </p>
             <div className="mt-2 flex gap-2">
               <input
@@ -103,21 +105,21 @@ export default function WelcomeScreen({
                   if (e.key === "Enter") onConfirmNewFolder();
                   if (e.key === "Escape") onCancelNewFolder();
                 }}
-                placeholder="nombre-de-carpeta"
+                placeholder={t("welcome.folderPlaceholder")}
                 className="min-w-0 flex-1 rounded border border-graphite-600 bg-graphite-800 px-2 py-1.5 text-[13px] text-graphite-100 outline-none focus:border-ember-500/60"
               />
               <button
                 onClick={onConfirmNewFolder}
                 className="shrink-0 rounded bg-ember-500/15 px-3 py-1.5 text-[13px] text-ember-400 hover:bg-ember-500/25"
               >
-                Crear
+                {t("welcome.create")}
               </button>
             </div>
             <button
               onClick={onCancelNewFolder}
               className="mt-1.5 text-[11px] text-graphite-500 hover:text-graphite-300"
             >
-              Cancelar (Esc)
+              {t("welcome.cancelEsc")}
             </button>
           </div>
         )}

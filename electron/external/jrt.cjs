@@ -31,7 +31,7 @@ async function jrtExtractedDir(home) {
   return p;
 }
 
-let jrtFilesCache = new Map(); // dirLower -> string[] (rutas absolutas)
+let jrtFilesCache = new Map(); // dirLower -> string[] (absolute paths)
 // Only platform packages (java/jdk/javax): the rest never lives in the
 // runtime. And only the FIRST JDK is extracted (the others solely if already
 // extracted before): avoids cascading extractions of hundreds of MB.

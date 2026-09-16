@@ -4,6 +4,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // Native dialogs
   openFolder: () => ipcRenderer.invoke("dialog:openFolder"),
   pickParentFolder: () => ipcRenderer.invoke("dialog:pickParentFolder"),
+  pickJdk: () => ipcRenderer.invoke("dialog:pickJdk"),
+  validateJdk: (home) => ipcRenderer.invoke("dialog:validateJdk", home),
   openFile: () => ipcRenderer.invoke("dialog:openFile"),
   saveFileAs: (content, defaultName) =>
     ipcRenderer.invoke("dialog:saveFileAs", { content, defaultName }),
@@ -25,10 +27,14 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // Java IntelliSense (java-language-server)
   lspStart: (rootPath) => ipcRenderer.invoke("lsp:start", rootPath),
   lspStop: () => ipcRenderer.invoke("lsp:stop"),
+  getSettings: () => ipcRenderer.invoke("settings:getAll"),
+  setSetting: (key, value) => ipcRenderer.invoke("settings:set", { key, value }),
   lspRequest: (method, params) => ipcRenderer.invoke("lsp:request", { method, params }),
   lspNotify: (method, params) => ipcRenderer.invoke("lsp:notify", { method, params }),
   // External symbols (JDK/dependencies): real source or decompiled
   resolveExternal: (query) => ipcRenderer.invoke("external:resolve", query),
+  // Build files: Maven Central existence (main, no CORS) + local ~/.m2/~/.gradle
+  checkMavenDeps: (deps, repos) => ipcRenderer.invoke("build:checkMaven", { deps, repos }),
   onExternalProgress: (callback) => {
     const listener = (_event, value) => callback(value);
     ipcRenderer.on("external:progress", listener);
@@ -54,5 +60,23 @@ contextBridge.exposeInMainWorld("electronAPI", {
     const listener = (_event, value) => callback(value);
     ipcRenderer.on("window:maximize-change", listener);
     return () => ipcRenderer.removeListener("window:maximize-change", listener);
+  },
+
+  // Auto-updater (GitHub Releases latest.yml)
+  getAppVersion: () => ipcRenderer.invoke("updater:getVersion"),
+  checkForUpdates: (manual) => ipcRenderer.invoke("updater:check", { manual: !!manual }),
+  downloadUpdate: () => ipcRenderer.invoke("updater:download"),
+  cancelUpdateDownload: () => ipcRenderer.invoke("updater:cancelDownload"),
+  openReleasePage: () => ipcRenderer.invoke("updater:openRelease"),
+  quitAndInstall: () => ipcRenderer.invoke("updater:quitAndInstall"),
+  onUpdaterStatus: (callback) => {
+    const listener = (_event, value) => callback(value);
+    ipcRenderer.on("updater:status", listener);
+    return () => ipcRenderer.removeListener("updater:status", listener);
+  },
+  onUpdaterProgress: (callback) => {
+    const listener = (_event, value) => callback(value);
+    ipcRenderer.on("updater:progress", listener);
+    return () => ipcRenderer.removeListener("updater:progress", listener);
   },
 });

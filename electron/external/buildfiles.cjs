@@ -5,6 +5,7 @@ const os = require("os");
 const crypto = require("crypto");
 const { execFileAsync, spawn } = require("./proc.cjs");
 const { mavenRepo, filterExisting, walkJars, gradleUserHome } = require("./jars.cjs");
+const { t } = require("../i18n.cjs");
 function mvnBinary() {
   for (const v of [process.env.MAVEN_HOME, process.env.M2_HOME]) {
     if (!v) continue;
@@ -58,7 +59,7 @@ async function mavenResolvedJars(pomPath, progress) {
   }
   if (typeof progress === "function") {
     try {
-      progress("Resolviendo dependencias Maven…");
+      progress(t("main.resolvingMaven"));
     } catch {
       // best-effort
     }
@@ -338,7 +339,7 @@ async function resolveBuildClasspath(contextDir, rootPath, progress) {
       jars = null;
     }
     if (!jars) {
-      say("Leyendo dependencias del pom…");
+      say(t("main.readingPomDeps"));
       try {
         jars = await fallbackPomJars(buildFile);
       } catch {
@@ -347,7 +348,7 @@ async function resolveBuildClasspath(contextDir, rootPath, progress) {
     }
     value = { jars: jars ?? [], dirs: [], via: "maven", buildFile };
   } else if (buildFile) {
-    say("Leyendo dependencias de Gradle…");
+    say(t("main.readingGradleDeps"));
     let jars = [];
     try {
       const text = await fsp.readFile(buildFile, "utf8");
