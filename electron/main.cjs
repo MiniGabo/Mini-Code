@@ -113,6 +113,8 @@ const { registerFileSystem } = require("./ipc/filesystem.cjs");
 const { registerLsp } = require("./ipc/lspIpc.cjs");
 const { registerExternal } = require("./ipc/external.cjs");
 const { registerBuild } = require("./ipc/buildIpc.cjs");
+const { registerTerminal, killAllTerminals } = require("./ipc/terminalIpc.cjs");
+const { registerExtensions } = require("./ipc/extensionsIpc.cjs");
 const { registerUpdater, scheduleAutoChecks } = require("./ipc/updaterIpc.cjs");
 
 const ipcCtx = { ipcMain, getWindow: () => mainWindow };
@@ -122,9 +124,16 @@ registerFileSystem(ipcCtx);
 registerLsp({ ...ipcCtx, javaLsp });
 registerExternal({ ...ipcCtx, app, getRootPath: () => javaLsp.rootPath });
 registerBuild(ipcCtx);
+registerTerminal(ipcCtx);
+registerExtensions({ ...ipcCtx, app });
 registerUpdater({ ...ipcCtx, app });
 scheduleAutoChecks(app, () => mainWindow);
 
 app.on("before-quit", () => {
+  try {
+    killAllTerminals();
+  } catch {
+    // best-effort
+  }
   javaLsp.stop();
 });

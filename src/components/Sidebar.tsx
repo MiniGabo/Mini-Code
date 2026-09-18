@@ -16,6 +16,11 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import FileIcon from "./FileIcon";
+import Wallpaper from "./Wallpaper";
+import { getFolderIconUrl } from "../extensions/themes/iconService";
+import { getRegistryVersion, subscribeRegistryChange } from "../extensions/themes/themeService";
+import { useSettingsStore } from "../stores/settingsStore";
+import { useSyncExternalStore } from "react";
 import type { FileTreeNode } from "../types";
 import { useT } from "../stores/settingsStore";
 
@@ -69,6 +74,21 @@ function MenuItem({
 
 function MenuDivider() {
   return <div className="mx-2 my-1 border-t border-graphite-700" />;
+}
+
+// Folder icon: theme SVG wins when the active theme contributes one.
+function ThemedFolderIcon({ name, open }: { name: string; open: boolean }) {
+  const theme = useSettingsStore((s) => s.theme);
+  useSyncExternalStore(subscribeRegistryChange, getRegistryVersion);
+  const custom = getFolderIconUrl(theme, name);
+  if (custom) {
+    return <img src={custom} width={14} height={14} alt="" draggable={false} className="shrink-0" />;
+  }
+  return open ? (
+    <FolderOpen size={14} className="text-[var(--mc-accent)]" />
+  ) : (
+    <Folder size={14} className="text-[var(--mc-accent)]" />
+  );
 }
 
 // Row label: inline input while renaming
@@ -186,11 +206,7 @@ function TreeNode({
           }}
         >
           {isOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-          {isOpen ? (
-            <FolderOpen size={14} className="text-ember-400" />
-          ) : (
-            <Folder size={14} className="text-ember-400" />
-          )}
+          <ThemedFolderIcon name={node.name} open={isOpen} />
           <RowLabel
             node={node}
             renamingPath={renamingPath}
@@ -488,10 +504,11 @@ export default function Sidebar({
     <aside
       data-explorer
       style={{ width }}
-      className="flex shrink-0 flex-col border-r border-graphite-800 bg-graphite-900"
+      className="relative flex shrink-0 flex-col border-r border-[var(--mc-border)] bg-[var(--mc-panel)]"
       onDragOver={onTreeDragOver}
       onDragLeave={onTreeDragLeave}
     >
+      <Wallpaper region="sidebar" />
       <div
         className={`flex items-center justify-between rounded px-2 py-2 text-[11px] tracking-wide text-graphite-500${
           dragOverRoot ? " drop-target" : ""

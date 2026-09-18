@@ -36,6 +36,8 @@ export interface UserSettings {
   tabSize: number;
   insertSpaces: boolean;
   minimap: boolean;
+  /** Active editor color theme id (built-in or contributed by an extension). */
+  theme: string;
   /** JDK home directory; empty = auto-detect (JAVA_HOME or PATH). */
   jdkPath: string;
   /** Max heap for the Java server (e.g. "768m"). */
@@ -50,6 +52,7 @@ const SETTINGS_DEFAULTS: UserSettings = {
   tabSize: 4,
   insertSpaces: true,
   minimap: false,
+  theme: "mini-code-dark",
   jdkPath: "",
   javaXmx: "768m",
   reopenLastProject: false,
@@ -96,6 +99,8 @@ function coerceSettings(raw: Record<string, unknown>): UserSettings {
     tabSize: clampNumber(raw.tabSize, SETTINGS_DEFAULTS.tabSize, 1, 8),
     insertSpaces: typeof raw.insertSpaces === "boolean" ? raw.insertSpaces : SETTINGS_DEFAULTS.insertSpaces,
     minimap: typeof raw.minimap === "boolean" ? raw.minimap : SETTINGS_DEFAULTS.minimap,
+    theme:
+      typeof raw.theme === "string" && raw.theme.trim() ? raw.theme.trim() : SETTINGS_DEFAULTS.theme,
     jdkPath: typeof raw.jdkPath === "string" ? raw.jdkPath : SETTINGS_DEFAULTS.jdkPath,
     javaXmx,
     reopenLastProject:
@@ -148,6 +153,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
       tabSize: s.tabSize,
       insertSpaces: s.insertSpaces,
       minimap: s.minimap,
+      theme: s.theme,
       jdkPath: s.jdkPath,
       javaXmx: s.javaXmx,
       reopenLastProject: s.reopenLastProject,

@@ -76,6 +76,8 @@
   "settings.editor.tabSize": "Tab size",
   "settings.editor.insertSpaces": "Insert spaces (uncheck for tabs)",
   "settings.editor.minimap": "Show minimap",
+  "settings.editor.theme": "Color theme",
+  "settings.editor.themeHint": "Includes themes contributed by extensions.",
   "settings.java.title": "Java",
   "settings.java.jdkPath": "JDK path (empty = auto-detect)",
   "settings.java.jdkBrowse": "Browse…",
@@ -86,6 +88,16 @@
   "settings.java.xmxHint": "Applies when reopening the project.",
   "settings.general.title": "General",
   "settings.general.reopen": "Reopen last project on startup",
+  "settings.extensions.title": "Extensions",
+  "settings.extensions.empty": "No extensions installed.",
+  "settings.extensions.hint": "Extensions are theme packs: a folder with extension.json. Install one and its themes will show up in the picker above.",
+  "settings.extensions.install": "Install…",
+  "settings.extensions.openFolder": "Open folder",
+  "settings.extensions.reload": "Reload",
+  "settings.extensions.uninstall": "Uninstall",
+  "settings.extensions.root": "Folder: {path}",
+  "settings.extensions.themeCount": "{count} themes",
+  "settings.extensions.confirmUninstall": "Uninstall “{name}”? Its folder will be deleted.",
 
   "build.bannerChanged": "has changed. Reload the project so the Java LSP picks up the changes.",
   "build.reload": "Reload project",
@@ -144,6 +156,9 @@
   "commands.toggleSidebar": "Show/hide explorer",
   "commands.undo": "Undo (explorer)",
   "commands.settings": "Open settings",
+  "commands.toggleTerminal": "Show/hide terminal",
+  "commands.restartTerminal": "Restart terminal",
+  "commands.killTerminal": "Kill terminal",
 
   "external.resolveFailed": "Failed to resolve the symbol",
   "external.unknownClass": "Class",
@@ -196,5 +211,14 @@
   "update.checkNow": "Check for updates",
   "update.checking": "Checking…",
   "update.upToDate": "You are up to date.",
-  "update.checkFailed": "Could not check for updates."
+  "update.checkFailed": "Could not check for updates.",
+
+  "terminal.title": "Terminal",
+  "terminal.close": "Hide terminal (Alt+T)",
+  "terminal.restart": "Restart terminal (Alt+R)",
+  "terminal.kill": "Kill terminal (Alt+K)",
+  "terminal.noBridge": "No Electron bridge. How strange",
+  "terminal.spawnFailed": "Could not start the terminal. How strange.",
+  "terminal.exited": "[process exited with code {code}]",
+  "terminal.exitedHint": "The terminal process has exited."
 }

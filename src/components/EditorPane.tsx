@@ -21,7 +21,9 @@ import "monaco-editor/esm/vs/basic-languages/yaml/yaml.contribution";
 import "monaco-editor/esm/vs/basic-languages/xml/xml.contribution";
 import "monaco-editor/esm/vs/basic-languages/markdown/markdown.contribution";
 import * as monaco from "monaco-editor/esm/vs/editor/editor.api";
-import { ensureMiniCodeTheme } from "../editor/MonacoSetup";
+import { ensureMiniCodeTheme, applyEditorTheme } from "../editor/MonacoSetup";
+import { ensureThemeDefined, getRegistryVersion, subscribeRegistryChange } from "../extensions/themes/themeService";
+import { useSyncExternalStore } from "react";
 import { ensureJavaProviders, attachJavaDoc, consumePendingReveal, flashTarget, registerModelKey, attachBuildDiagnostics } from "../lsp.js";
 import { createCtrlClickHandler } from "../editor/features/gotoDefinition/ctrlClick";
 import type { FlashCell } from "../editor/features/gotoDefinition/ctrlClick";
@@ -72,6 +74,11 @@ export default function EditorPane({
   const tabSize = useSettingsStore((s) => s.tabSize);
   const insertSpaces = useSettingsStore((s) => s.insertSpaces);
   const minimap = useSettingsStore((s) => s.minimap);
+  const theme = useSettingsStore((s) => s.theme);
+  // Re-apply when the registry fills in after mount (extension theme that
+  // arrived later than this editor): without this, a saved extension theme
+  // silently stays on the fallback.
+  const registryVersion = useSyncExternalStore(subscribeRegistryChange, getRegistryVersion);
 
   useEffect(() => {
     ensureTheme();
@@ -98,7 +105,7 @@ export default function EditorPane({
         }
         return monaco.editor.createModel(initialValue, language ?? "java", uri);
       })(),
-      theme: "mini-code-dark",
+      theme: ensureThemeDefined(monaco, theme),
       automaticLayout: true,
       // Virtual tabs (dependencies): read-only, no editing
       readOnly: !!readOnly,
@@ -302,6 +309,16 @@ export default function EditorPane({
       // editor disposed mid-update
     }
   }, [fontFamily, fontSize, tabSize, insertSpaces, minimap]);
+
+  // Live-apply the color theme (global in Monaco, resolves with fallback).
+  // Also re-runs when the registry version changes (late extension themes).
+  useEffect(() => {
+    try {
+      applyEditorTheme(monaco, theme);
+    } catch {
+      // unknown theme: keep the current one
+    }
+  }, [theme, registryVersion]);
 
   return <div ref={containerRef} className="h-full w-full" onMouseDown={onFocusEditor} />;
 }

@@ -62,10 +62,10 @@ export default function WelcomeScreen({
 }: WelcomeScreenProps) {
   const t = useT();
   return (
-    <div className="flex h-full w-full items-center justify-center overflow-hidden bg-graphite-950">
+    <div className="flex h-full w-full items-center justify-center overflow-hidden bg-[var(--mc-bg)]">
       <div className="flex w-full max-w-[320px] flex-col items-center px-6 text-center">
         {/* Large logo, no background */}
-        <Coffee size={56} strokeWidth={1.4} className="text-ember-500" />
+        <Coffee size={56} strokeWidth={1.4} className="text-[var(--mc-accent-strong)]" />
         <h1 className="mt-4 text-4xl font-semibold text-graphite-100">Mini Code</h1>
 
         {/* 3 main actions with shortcut on the side */}

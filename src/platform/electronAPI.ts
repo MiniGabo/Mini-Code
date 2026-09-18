@@ -1,6 +1,59 @@
 // Typed access to the Electron bridge (preload.cjs -> window.electronAPI).
 import { t } from "../stores/settingsStore";
 
+export interface TerminalOpenOptions {
+  cwd?: string | null;
+  cols?: number;
+  rows?: number;
+}
+
+export interface TerminalOpenResult {
+  ok: boolean;
+  id?: number;
+  /** True when attaching to the already-running shell (no new process). */
+  reused?: boolean;
+  error?: string;
+}
+
+export interface ExtensionsScanResult {
+  ok: boolean;
+  root?: string;
+  entries?: Array<{ dir: string; manifest?: unknown; error?: string }>;
+  error?: string;
+}
+
+export interface ExtensionsReadResult {
+  ok: boolean;
+  json?: unknown;
+  error?: string;
+}
+
+export interface ExtensionsAssetResult {
+  ok: boolean;
+  mime?: string;
+  dataUrl?: string;
+  error?: string;
+}
+
+export interface ExtensionsInstallResult {
+  ok: boolean;
+  id?: string;
+  cancelled?: boolean;
+  error?: string;
+}
+
+export interface ExtensionsUninstallResult {
+  ok: boolean;
+  id?: string;
+  error?: string;
+}
+
+export interface ExtensionsOpenFolderResult {
+  ok: boolean;
+  root?: string;
+  error?: string;
+}
+
 export interface ElectronAPI {
   openFolder(): Promise<import("../types").FileTreeNode | null>;
   pickParentFolder(): Promise<string | null>;
@@ -28,6 +81,19 @@ export interface ElectronAPI {
   onDiagnostics(cb: (v: { uri: string; diagnostics: unknown[] }) => void): (() => void) | undefined;
   onLspStatus(cb: (v: { state: string; message?: string }) => void): (() => void) | undefined;
   minimizeWindow(): void;
+  terminalOpen(opts?: TerminalOpenOptions): Promise<TerminalOpenResult>;
+  terminalWrite(id: number, data: string): Promise<{ ok: boolean }>;
+  terminalResize(id: number, cols: number, rows: number): Promise<{ ok: boolean }>;
+  terminalPause(id: number): Promise<{ ok: boolean }>;
+  terminalCloseAll(): Promise<{ ok: boolean; killed?: boolean }>;
+  onTerminalData(cb: (v: { id: number; data: string }) => void): (() => void) | undefined;
+  onTerminalExit(cb: (v: { id: number; exitCode: number }) => void): (() => void) | undefined;
+  extensionsScan(): Promise<ExtensionsScanResult>;
+  extensionsReadJson(dir: string, rel: string): Promise<ExtensionsReadResult>;
+  extensionsReadAsset(dir: string, rel: string): Promise<ExtensionsAssetResult>;
+  extensionsInstall(): Promise<ExtensionsInstallResult>;
+  extensionsUninstall(id: string): Promise<ExtensionsUninstallResult>;
+  extensionsOpenFolder(): Promise<ExtensionsOpenFolderResult>;
   toggleMaximize(): void;
   closeWindow(): void;
   isMaximized(): Promise<boolean>;

@@ -25,6 +25,12 @@ function persistWidth(width: number): void {
   }
 }
 
+// Throttle for the terminal toggle (Alt+T): spawning the shell takes a
+// moment to paint, so an impatient second press (or holding Alt while
+// tapping T twice) would otherwise open and instantly close the panel.
+const TERMINAL_TOGGLE_MIN_INTERVAL = 500;
+let lastTerminalToggleAt = 0;
+
 interface UiState {
   sidebarVisible: boolean;
   sidebarWidth: number;
@@ -34,11 +40,20 @@ interface UiState {
   newFolderName: string;
   /** Saved build files that have not reloaded the LSP yet (key -> info). */
   buildReloadPending: Record<string, { name: string; at: number }>;
+  /** Integrated terminal (Alt+T): hidden by default so it never bothers the UI. */
+  terminalVisible: boolean;
+  /** Bumped by requestTerminalRestart (Alt+R); the panel consumes it to respawn. */
+  terminalRestartNonce: number;
   toggleSidebar: () => void;
+  toggleTerminal: () => void;
+  requestTerminalRestart: () => void;
+  setTerminalVisible: (v: boolean) => void;
   setSidebarVisible: (v: boolean) => void;
   setSidebarWidth: (w: number) => void;
   resetSidebarWidth: () => void;
   notifyError: (message: string) => void;
+  /** Neutral toast (extension commands, info). Auto-dismisses like errors. */
+  notify: (message: string) => void;
   dismissToast: (id: number) => void;
   setPendingClose: (p: PendingClose | null) => void;
   setPendingParent: (p: string | null) => void;
@@ -57,8 +72,18 @@ export const useUiStore = create<UiState>((set) => ({
   pendingParent: null,
   newFolderName: "",
   buildReloadPending: {},
+  terminalVisible: false,
+  terminalRestartNonce: 0,
 
   toggleSidebar: () => set((s) => ({ sidebarVisible: !s.sidebarVisible })),
+  toggleTerminal: () => {
+    const now = Date.now();
+    if (now - lastTerminalToggleAt < TERMINAL_TOGGLE_MIN_INTERVAL) return;
+    lastTerminalToggleAt = now;
+    set((s) => ({ terminalVisible: !s.terminalVisible }));
+  },
+  requestTerminalRestart: () => set((s) => ({ terminalRestartNonce: s.terminalRestartNonce + 1 })),
+  setTerminalVisible: (v) => set({ terminalVisible: v }),
   setSidebarVisible: (v) => set({ sidebarVisible: v }),
 
   setSidebarWidth: (w) => {
@@ -74,7 +99,15 @@ export const useUiStore = create<UiState>((set) => ({
 
   notifyError: (message) => {
     const id = Date.now() + Math.random();
-    set((s) => ({ toasts: [...s.toasts.slice(-3), { id, message }] }));
+    set((s) => ({ toasts: [...s.toasts.slice(-3), { id, message, kind: "error" as const }] }));
+    setTimeout(() => {
+      set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) }));
+    }, 4500);
+  },
+
+  notify: (message) => {
+    const id = Date.now() + Math.random();
+    set((s) => ({ toasts: [...s.toasts.slice(-3), { id, message, kind: "info" as const }] }));
     setTimeout(() => {
       set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) }));
     }, 4500);
@@ -101,5 +134,5 @@ export const useUiStore = create<UiState>((set) => ({
   clearAllBuildReload: () => set({ buildReloadPending: {} }),
 
   resetForRestart: () =>
-    set({ pendingClose: null, pendingParent: null, newFolderName: "", sidebarVisible: true, buildReloadPending: {} }),
+    set({ pendingClose: null, pendingParent: null, newFolderName: "", sidebarVisible: true, buildReloadPending: {}, terminalVisible: false }),
 }));

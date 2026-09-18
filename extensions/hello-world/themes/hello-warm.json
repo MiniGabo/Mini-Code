@@ -1,0 +1,64 @@
+{
+  "$schema": "minicode-theme#1",
+  "name": "Hello Warm",
+  "extends": "mini-code-dark",
+  "colors": {
+    "editor.background": "#201a14b3",
+    "editor.foreground": "#e8dcc8",
+    "editorLineNumber.foreground": "#6b5d4d",
+    "editorLineNumber.activeForeground": "#e2725b",
+    "editor.selectionBackground": "#4a3a28",
+    "editorCursor.foreground": "#e2725b",
+    "editor.lineHighlightBackground": "#262017",
+    "terminal.background": "#221a13",
+    "terminal.foreground": "#d6c7ae",
+    "terminalCursor.foreground": "#e2725b",
+    "terminal.selectionBackground": "#4a3a28"
+  },
+  "tokenColors": [
+    { "scope": "comment", "settings": { "foreground": "#8a7a63", "fontStyle": "italic" } },
+    { "scope": "keyword", "settings": { "foreground": "#e2725b", "fontStyle": "bold" } },
+    { "scope": "type", "settings": { "foreground": "#e8a87c" } },
+    { "scope": "method", "settings": { "foreground": "#e5c07b" } },
+    { "scope": "variable", "settings": { "foreground": "#d9c2a3" } },
+    { "scope": "namespace", "settings": { "foreground": "#c9a87c" } },
+    { "scope": "identifier", "settings": { "foreground": "#e8dcc8" } },
+    { "scope": "annotation", "settings": { "foreground": "#d9a05b" } },
+    { "scope": "delimiter", "settings": { "foreground": "#a89a86" } },
+    { "scope": "number", "settings": { "foreground": "#e08a3c" } },
+    { "scope": "string", "settings": { "foreground": "#a8bf7a" } },
+    { "scope": "string.escape", "settings": { "foreground": "#e08a3c" } },
+    { "scope": "tag", "settings": { "foreground": "#d98c5f" } },
+    { "scope": "metatag", "settings": { "foreground": "#e2725b" } },
+    { "scope": "strong", "settings": { "fontStyle": "bold" } },
+    { "scope": "emphasis", "settings": { "fontStyle": "italic" } }
+  ],
+  "ui": {
+    "bg": "#171310",
+    "panel": "#221a13",
+    "border": "#3a2d1f",
+    "text": "#d6c7ae",
+    "textMuted": "#8a7a63",
+    "accent": "#e2725b",
+    "accentStrong": "#e2725b"
+  },
+  "background": {
+    "file": "assets/icon.png",
+    "opacity": 0.25,
+    "fit": "cover",
+    "where": ["editor"]
+  },
+  "icons": {
+    "files": {
+      ".java": "icons/java.svg",
+      ".md": "icons/md.svg",
+      ".markdown": "icons/md.svg",
+      "pom.xml": "icons/java.svg"
+    },
+    "folders": {
+      "src": "icons/folder.svg"
+    },
+    "defaultFile": "icons/file.svg",
+    "defaultFolder": "icons/folder.svg"
+  }
+}

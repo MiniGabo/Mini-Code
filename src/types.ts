@@ -32,6 +32,8 @@ export type LspStatus = "off" | "starting" | "indexing" | "ready" | "error";
 export interface Toast {
   id: number;
   message: string;
+  /** Visual style: errors are red, info is neutral. Defaults to "error". */
+  kind?: "error" | "info";
 }
 
 export interface PendingClose {

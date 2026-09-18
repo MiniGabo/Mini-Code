@@ -11,8 +11,10 @@ import DecompilingView from "./components/DecompilingView";
 import BuildReloadBanner from "./components/BuildReloadBanner";
 import UpdateBanner from "./components/UpdateBanner";
 import SettingsView from "./components/SettingsView";
+import TerminalPanel from "./components/TerminalPanel";
+import Wallpaper from "./components/Wallpaper";
 import { isBuildFileName } from "./editor/features/diagnostics/buildDiagnostics";
-import { PanelLeft, AlertTriangle, X } from "lucide-react";
+import { PanelLeft, AlertTriangle, Info, X } from "lucide-react";
 import {
   setOpenFileByPath,
   clearFileErrors,
@@ -34,6 +36,11 @@ import { useLspStore, ensureFileErrorSubscription } from "./stores/lspStore";
 import { useSettingsStore, ensureSettingsLoaded, t as translate } from "./stores/settingsStore";
 import { useUpdaterStore, shouldShowUpdateBanner } from "./stores/updaterStore";
 import { registerCommand, handleShortcutEvent } from "./extensions/commandRegistry";
+import { discoverExtensions } from "./extensions/host";
+import { ensureBuiltinThemes } from "./extensions/builtin";
+import { applyTheme, getRegistryVersion, subscribeRegistryChange } from "./extensions/themes/themeService";
+import { ensureThemeIcons } from "./extensions/themes/iconService";
+import { useSyncExternalStore } from "react";
 import type { OpenFile, FileKey } from "./types";
 
 const isMac =
@@ -52,11 +59,41 @@ export default function App() {
   const pendingClose = useUiStore((s) => s.pendingClose);
   const pendingParent = useUiStore((s) => s.pendingParent);
   const newFolderName = useUiStore((s) => s.newFolderName);
+  const terminalVisible = useUiStore((s) => s.terminalVisible);
   const buildReloadPending = useUiStore((s) => s.buildReloadPending);
   const lspStatus = useLspStore((s) => s.lspStatus);
   const fileErrors = useLspStore((s) => s.fileErrors);
   const language = useSettingsStore((s) => s.language);
   const [buildReloading, setBuildReloading] = useState(false);
+  const activeTheme = useSettingsStore((s) => s.theme);
+  const themeRegistryVersion = useSyncExternalStore(subscribeRegistryChange, getRegistryVersion);
+
+  // Theme application (-> :root) + theme icon preload. Re-applies when
+  // the theme changes or when late extensions register (registry version bump).
+  // Single pipeline: applyTheme never throws and always resolves a fallback.
+  useEffect(() => {
+    applyTheme(activeTheme);
+    void ensureThemeIcons(activeTheme).catch(() => {});
+  }, [activeTheme, themeRegistryVersion]);
+
+  // Extensions: local theme folders with extension.json.
+  useEffect(() => {
+    // Built-ins register eagerly so the theme list is complete even if no
+    // editor ever mounts (e.g. Settings opened straight from the welcome).
+    ensureBuiltinThemes();
+    let cancelled = false;
+    void discoverExtensions().then(({ loaded, diagnostics }) => {
+      if (cancelled) return;
+      if (loaded.length > 0 || diagnostics.length > 0) {
+        console.info(
+          `[extensions] ${loaded.length} cargadas, ${diagnostics.length} avisos/errores (ver Ajustes > Extensiones)`,
+        );
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const lspReadyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Root already covered by the workspace diagnostics sweep (reset on every startLsp).
@@ -890,7 +927,7 @@ export default function App() {
     }
   }, [startLsp, clearLspTimer]);
 
-  // Global shortcuts via command registry (extensions/commandRegistry)
+  // Global shortcuts via the built-in command registry (extensions/commandRegistry)
   useEffect(() => {
     const undoGuarded = () => {
       const ae = document.activeElement;
@@ -920,6 +957,23 @@ export default function App() {
       }),
       registerCommand({ id: "explorer.undo", title: translate("commands.undo"), shortcut: "ctrl+z", run: undoGuarded }),
       registerCommand({ id: "settings.open", title: translate("commands.settings"), shortcut: "ctrl+,", run: () => handleOpenSettings() }),
+      registerCommand({ id: "terminal.toggle", title: translate("commands.toggleTerminal"), shortcut: "alt+t", run: () => useUiStore.getState().toggleTerminal() }),
+      registerCommand({
+        id: "terminal.restart",
+        title: translate("commands.restartTerminal"),
+        shortcut: "alt+r",
+        run: () => {
+          const ui = useUiStore.getState();
+          ui.setTerminalVisible(true);
+          ui.requestTerminalRestart();
+        },
+      }),
+      registerCommand({
+        id: "terminal.kill",
+        title: translate("commands.killTerminal"),
+        shortcut: "alt+k",
+        run: () => void window.electronAPI?.terminalCloseAll().catch(() => {}),
+      }),
     ];
     const bindings: Record<string, string> = {
       "ctrl+s": "file.save",
@@ -931,6 +985,9 @@ export default function App() {
       "ctrl+shift+e": "sidebar.toggle",
       "ctrl+z": "explorer.undo",
       "ctrl+,": "settings.open",
+      "alt+t": "terminal.toggle",
+      "alt+r": "terminal.restart",
+      "alt+k": "terminal.kill",
     };
     const handler = (e: KeyboardEvent) => handleShortcutEvent(e, bindings, isMac);
     window.addEventListener("keydown", handler);
@@ -948,7 +1005,7 @@ export default function App() {
   const showBuildBanner = !!activeBuildPending && !showWelcome;
 
   return (
-    <div className="flex h-screen w-screen flex-col bg-graphite-950 text-graphite-300 font-ui">
+    <div className="flex h-screen w-screen flex-col bg-[var(--mc-bg)] text-[var(--mc-text)] font-ui">
       <TitleBar lspStatus={lspStatus} onOpenSettings={handleOpenSettings} />
       {showUpdateBanner && <UpdateBanner />}
 
@@ -985,8 +1042,9 @@ export default function App() {
         )}
 
         <div className="flex-1 min-w-0 flex flex-col relative">
+          <Wallpaper region="editor" />
           {!showWelcome && (
-            <div className="flex h-9 shrink-0 items-stretch border-b border-graphite-800 bg-graphite-900 select-none">
+            <div className="flex h-9 shrink-0 items-stretch border-b border-[var(--mc-border)] bg-[var(--mc-panel)] select-none">
               {!sidebarVisible && folderTree && (
                 <button
                   onClick={() => useUiStore.getState().setSidebarVisible(true)}
@@ -1059,6 +1117,7 @@ export default function App() {
               onDismiss={() => useUiStore.getState().clearBuildReload(activeKey)}
             />
           )}
+          {terminalVisible && <TerminalPanel rootPath={folderTree?.path ?? null} />}
         </div>
       </div>
 
@@ -1100,22 +1159,31 @@ export default function App() {
 
       {toasts.length > 0 && (
         <div className="pointer-events-none fixed bottom-4 right-4 z-50 flex w-80 flex-col gap-2">
-          {toasts.map((t) => (
-            <div
-              key={t.id}
-              className="toast-in pointer-events-auto flex items-start gap-2 rounded-md border border-red-500/40 bg-graphite-800 px-3 py-2.5 shadow-xl"
-            >
-              <AlertTriangle size={15} className="mt-0.5 shrink-0 text-red-400" />
-              <p className="flex-1 text-[12.5px] leading-snug text-graphite-100">{t.message}</p>
-              <button
-                onClick={() => dismissToast(t.id)}
-                title={translate("common.dismissToast")}
-                className="rounded p-0.5 text-graphite-500 hover:bg-graphite-700 hover:text-graphite-200"
+          {toasts.map((t) => {
+            const info = t.kind === "info";
+            return (
+              <div
+                key={t.id}
+                className={`toast-in pointer-events-auto flex items-start gap-2 rounded-md border bg-graphite-800 px-3 py-2.5 shadow-xl ${
+                  info ? "border-ember-500/40" : "border-red-500/40"
+                }`}
               >
-                <X size={13} />
-              </button>
-            </div>
-          ))}
+                {info ? (
+                  <Info size={15} className="mt-0.5 shrink-0 text-ember-400" />
+                ) : (
+                  <AlertTriangle size={15} className="mt-0.5 shrink-0 text-red-400" />
+                )}
+                <p className="flex-1 text-[12.5px] leading-snug text-graphite-100">{t.message}</p>
+                <button
+                  onClick={() => dismissToast(t.id)}
+                  title={translate("common.dismissToast")}
+                  className="rounded p-0.5 text-graphite-500 hover:bg-graphite-700 hover:text-graphite-200"
+                >
+                  <X size={13} />
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

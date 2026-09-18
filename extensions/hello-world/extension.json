@@ -1,0 +1,11 @@
+{
+  "id": "hello-world",
+  "name": "Hello World",
+  "version": "1.0.0",
+  "description": "Extensión de ejemplo del sistema de extensiones v2: un tema completo.",
+  "contributes": {
+    "themes": [
+      { "id": "hello-warm", "label": "Hello Warm", "uiTheme": "vs-dark", "path": "themes/hello-warm.json" }
+    ]
+  }
+}

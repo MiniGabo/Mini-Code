@@ -51,6 +51,33 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return () => ipcRenderer.removeListener("lsp:status", listener);
   },
 
+  // Extensions (theme packs: manifest + theme JSON only)
+  extensionsScan: () => ipcRenderer.invoke("extensions:scan"),
+  extensionsReadJson: (dir, rel) => ipcRenderer.invoke("extensions:readJson", { dir, rel }),
+  extensionsReadAsset: (dir, rel) => ipcRenderer.invoke("extensions:readAsset", { dir, rel }),
+  extensionsInstall: () => ipcRenderer.invoke("extensions:install"),
+  extensionsUninstall: (id) => ipcRenderer.invoke("extensions:uninstall", { id }),
+  extensionsOpenFolder: () => ipcRenderer.invoke("extensions:openFolder"),
+
+  // Integrated terminal (Option B: persistent PTY via node-pty + xterm.js).
+  // The shell outlives the panel: open attaches (spawning on first use),
+  // hiding the panel only detaches. Close kills explicitly (restart button).
+  terminalOpen: (opts) => ipcRenderer.invoke("terminal:open", opts),
+  terminalWrite: (id, data) => ipcRenderer.invoke("terminal:write", { id, data }),
+  terminalResize: (id, cols, rows) => ipcRenderer.invoke("terminal:resize", { id, cols, rows }),
+  terminalPause: (id) => ipcRenderer.invoke("terminal:pause", { id }),
+  terminalCloseAll: () => ipcRenderer.invoke("terminal:closeAll"),
+  onTerminalData: (callback) => {
+    const listener = (_event, value) => callback(value);
+    ipcRenderer.on("terminal:data", listener);
+    return () => ipcRenderer.removeListener("terminal:data", listener);
+  },
+  onTerminalExit: (callback) => {
+    const listener = (_event, value) => callback(value);
+    ipcRenderer.on("terminal:exit", listener);
+    return () => ipcRenderer.removeListener("terminal:exit", listener);
+  },
+
   // Window controls (custom TitleBar)
   minimizeWindow: () => ipcRenderer.invoke("window:minimize"),
   toggleMaximize: () => ipcRenderer.invoke("window:toggle-maximize"),

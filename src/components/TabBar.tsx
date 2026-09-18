@@ -26,9 +26,9 @@ export default function TabBar({ files, activeKey, onSelect, onClose, fileErrors
           <div
             key={key}
             onClick={() => onSelect(key)}
-            className={`group flex min-w-0 max-w-48 cursor-pointer items-center gap-1.5 border-r border-graphite-800 px-3 text-[12px] ${
+            className={`group flex min-w-0 max-w-48 cursor-pointer items-center gap-1.5 border-r border-[var(--mc-border)] px-3 text-[12px] ${
               isActive
-                ? "bg-graphite-950 text-graphite-100"
+                ? "bg-[var(--mc-bg)] text-graphite-100"
                 : "text-graphite-400 hover:bg-graphite-850 hover:text-graphite-200"
             }${errCount > 0 ? " !bg-red-500/10" : ""}`}
             title={
@@ -50,7 +50,7 @@ export default function TabBar({ files, activeKey, onSelect, onClose, fileErrors
             )}
             {f.loading && (
               <span title={t("tabbar.loading")} className="contents">
-                <Loader2 size={11} className="shrink-0 animate-spin text-ember-400" />
+                <Loader2 size={11} className="shrink-0 animate-spin text-[var(--mc-accent)]" />
               </span>
             )}
             {errCount > 0 && (
@@ -65,7 +65,7 @@ export default function TabBar({ files, activeKey, onSelect, onClose, fileErrors
               {dirty ? (
                 <>
                   <span
-                    className="h-2 w-2 rounded-full bg-ember-400 group-hover:hidden"
+                    className="h-2 w-2 rounded-full bg-[var(--mc-accent)] group-hover:hidden"
                     title={t("tabbar.unsaved")}
                   />
                   <button

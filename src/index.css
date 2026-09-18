@@ -9,6 +9,20 @@
 
 :root {
   color-scheme: dark;
+  /* Chrome theme variables (extensions/themes). Defaults = built-in palette;
+     the active theme overrides them via themeService.applyTheme, which
+     always writes the full managed set (resolved with defaults). */
+  --mc-bg: #131313;
+  --mc-panel: #191a1b;
+  --mc-border: #232526;
+  --mc-text: #a7acaf;
+  --mc-text-muted: #6a7075;
+  --mc-accent: #eda05a;
+  --mc-accent-strong: #e08a3c;
+  --mc-error: #ff5370;
+  --mc-scrollbar: #3a3d3f;
+  --mc-row-hover: #232526;
+  --mc-row-active: #2c2f31;
 }
 
 html,
@@ -16,7 +30,7 @@ body,
 #root {
   height: 100%;
   margin: 0;
-  background-color: #131313;
+  background-color: var(--mc-bg);
   color: #d4d4d4;
   font-family: "Inter", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -36,22 +50,22 @@ body,
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #3a3d3f;
+  background: var(--mc-scrollbar);
   border-radius: 6px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #54585b;
+  background: var(--mc-text-muted);
 }
 
 kbd {
   font-family: "JetBrains Mono", "Fira Code", monospace;
   font-size: 0.75rem;
-  background: #232526;
-  border: 1px solid #3a3d3f;
+  background: var(--mc-row-hover);
+  border: 1px solid var(--mc-border);
   border-bottom-width: 2px;
   border-radius: 5px;
   padding: 2px 7px;
-  color: #eda05a;
+  color: var(--mc-accent);
   white-space: nowrap;
 }
 
@@ -63,36 +77,36 @@ kbd {
   border-radius: 4px;
   cursor: pointer;
   font-size: 13px;
-  color: #a7acaf;
+  color: var(--mc-text);
   user-select: none;
   white-space: nowrap;
 }
 
 .tree-row:hover {
-  background: #232526;
+  background: var(--mc-row-hover);
   color: #d4d4d4;
 }
 
 .tree-row.active {
-  background: #2c2f31;
+  background: var(--mc-row-active);
   color: #f4bc86;
 }
 
 /* Row with errors: subtle red tint (wins over .active) */
 .tree-row.has-errors {
-  background: rgba(255, 83, 112, 0.12);
+  background: color-mix(in srgb, var(--mc-error) 12%, transparent);
 }
 
 /* Folder selected as destination (subtle, distinct from .active) */
 .tree-row.selected {
-  background: rgba(237, 160, 90, 0.12);
+  background: color-mix(in srgb, var(--mc-accent) 12%, transparent);
   color: #d4d4d4;
 }
 
 /* Valid drag destination (rows and root header) */
 .drop-target {
-  background: rgba(237, 160, 90, 0.22);
-  outline: 1px dashed #eda05a;
+  background: color-mix(in srgb, var(--mc-accent) 22%, transparent);
+  outline: 1px dashed var(--mc-accent);
   outline-offset: -1px;
 }
 

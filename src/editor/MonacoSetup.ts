@@ -1,6 +1,11 @@
 // Theme + tokenizer.
 // Adding a language = adding its `setMonarchTokensProvider` here and its
 // contribution in EditorPane, without touching the component.
+// Editor color themes live as data in extensions/themes/themeService
+// (built-in mini-code-dark/light + extension contributions); this module
+// only wires them into Monaco.
+import { ensureThemeDefined, FALLBACK_THEME_ID } from "../extensions/themes/themeService";
+import { ensureBuiltinThemes } from "../extensions/builtin";
 
 let themeDefined = false;
 
@@ -151,68 +156,21 @@ export function ensureMiniCodeTheme(monaco: any): void {
       ],
     },
   });
-  monaco.editor.defineTheme("mini-code-dark", {
-    base: "vs-dark",
-    inherit: true,
-    rules: [
-      { token: "comment", foreground: "6a7075", fontStyle: "italic" },
-      { token: "comment.java", foreground: "6a7075", fontStyle: "italic" },
-      { token: "keyword", foreground: "eda05a", fontStyle: "bold" },
-      { token: "keyword.flow", foreground: "eda05a", fontStyle: "bold" },
-      { token: "type", foreground: "f4bc86" },
-      { token: "type.identifier", foreground: "f4bc86" },
-      { token: "type.java", foreground: "f4bc86" },
-      { token: "method", foreground: "e5c07b" },
-      { token: "method.java", foreground: "e5c07b" },
-      { token: "variable", foreground: "9cdcfe" },
-      { token: "variable.java", foreground: "9cdcfe" },
-      { token: "namespace", foreground: "bb9af7" },
-      { token: "namespace.java", foreground: "bb9af7" },
-      { token: "identifier", foreground: "d4d4d4" },
-      { token: "annotation", foreground: "7dcfff" },
-      { token: "delimiter", foreground: "a7acaf" },
-      { token: "delimiter.java", foreground: "a7acaf" },
-      { token: "number", foreground: "e08a3c" },
-      { token: "number.float", foreground: "e08a3c" },
-      { token: "number.hex", foreground: "e08a3c" },
-      { token: "number.octal", foreground: "e08a3c" },
-      { token: "number.binary", foreground: "e08a3c" },
-      { token: "number.infinity", foreground: "e08a3c" },
-      { token: "number.nan", foreground: "e08a3c" },
-      { token: "number.date", foreground: "e08a3c" },
-      { token: "string", foreground: "c9d97a" },
-      { token: "string.escape", foreground: "e08a3c" },
-      { token: "string.invalid", foreground: "ff5370", fontStyle: "underline" },
-      { token: "string.java", foreground: "c9d97a" },
-      { token: "type.yaml", foreground: "f4bc86" },
-      { token: "operators", foreground: "eda05a" },
-      { token: "tag", foreground: "7dcfff" },
-      { token: "namespace.yaml", foreground: "bb9af7" },
-      { token: "meta.directive", foreground: "6a7075", fontStyle: "italic" },
-      { token: "metatag", foreground: "eda05a" },
-      { token: "attribute.name", foreground: "9cdcfe" },
-      { token: "attribute.value", foreground: "c9d97a" },
-      { token: "strong", fontStyle: "bold" },
-      { token: "emphasis", fontStyle: "italic" },
-      { token: "string.link", foreground: "7dcfff", fontStyle: "underline" },
-      { token: "string.target", foreground: "a7acaf" },
-      { token: "meta.separator", foreground: "6a7075" },
-    ],
-    colors: {
-      "editor.background": "#1a1b1c",
-      "editor.foreground": "#d4d4d4",
-      "editorLineNumber.foreground": "#54585b",
-      "editorLineNumber.activeForeground": "#eda05a",
-      "editor.selectionBackground": "#3a3d3f",
-      "editor.selectionHighlightBackground": "#2c2f31",
-      "editor.lineHighlightBackground": "#202223",
-      "editorCursor.foreground": "#eda05a",
-      "editorGutter.background": "#1a1b1c",
-      "editorIndentGuide.background": "#2c2f31",
-      "editorIndentGuide.activeBackground": "#3a3d3f",
-      "editorBracketMatch.background": "#3a3d3f",
-      "editorBracketMatch.border": "#eda05a",
-    },
-  });
+  // Color themes are data (extensions/themes/themeService): the built-in
+  // themes are registered like any other, then defined once in Monaco.
+  ensureBuiltinThemes();
+  ensureThemeDefined(monaco, FALLBACK_THEME_ID);
   themeDefined = true;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function applyEditorTheme(monaco: any, themeId: string): string {
+  ensureBuiltinThemes();
+  const name = ensureThemeDefined(monaco, themeId);
+  try {
+    monaco.editor.setTheme(name);
+  } catch {
+    // unknown theme after all: keep the current one
+  }
+  return name;
 }

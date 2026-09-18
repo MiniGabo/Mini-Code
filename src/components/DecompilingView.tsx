@@ -9,7 +9,7 @@ export default function DecompilingView({ file }: { file: OpenFile }) {
   const t = useT();
   if (file.loadError) {
     return (
-      <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-graphite-950 px-8 text-center">
+      <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-[var(--mc-bg)] px-8 text-center">
         <AlertTriangle size={28} className="text-red-400" />
         <p className="text-[14px] font-medium text-graphite-100">{file.name}</p>
         <p className="max-w-md text-[12.5px] leading-relaxed text-graphite-400">
@@ -22,7 +22,7 @@ export default function DecompilingView({ file }: { file: OpenFile }) {
     );
   }
   return (
-    <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-graphite-950 px-8 text-center">
+    <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-[var(--mc-bg)] px-8 text-center">
       <FileCode2 size={28} className="text-ember-400" />
       <p className="font-mono text-[14px] text-graphite-100">{file.name}</p>
       <div className="flex items-center gap-2 text-[12.5px] text-graphite-400">

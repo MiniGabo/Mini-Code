@@ -76,6 +76,8 @@
   "settings.editor.tabSize": "Tamaño de tabulación",
   "settings.editor.insertSpaces": "Insertar espacios (desmarcar para usar tabs)",
   "settings.editor.minimap": "Mostrar minimapa",
+  "settings.editor.theme": "Tema de color",
+  "settings.editor.themeHint": "Incluye los temas aportados por extensiones.",
   "settings.java.title": "Java",
   "settings.java.jdkPath": "Ruta del JDK (vacío = autodetectar)",
   "settings.java.jdkBrowse": "Examinar…",
@@ -86,6 +88,16 @@
   "settings.java.xmxHint": "Se aplica al reabrir el proyecto.",
   "settings.general.title": "General",
   "settings.general.reopen": "Reabrir el último proyecto al iniciar",
+  "settings.extensions.title": "Extensiones",
+  "settings.extensions.empty": "No hay extensiones instaladas.",
+  "settings.extensions.hint": "Las extensiones son paquetes de temas: una carpeta con extension.json. Instala una y sus temas aparecerán en el selector de arriba.",
+  "settings.extensions.install": "Instalar…",
+  "settings.extensions.openFolder": "Abrir carpeta",
+  "settings.extensions.reload": "Recargar",
+  "settings.extensions.uninstall": "Desinstalar",
+  "settings.extensions.root": "Carpeta: {path}",
+  "settings.extensions.themeCount": "{count} temas",
+  "settings.extensions.confirmUninstall": "¿Desinstalar «{name}»? Se eliminará su carpeta.",
 
   "build.bannerChanged": "ha cambiado. Recarga el proyecto para que el LSP de Java tome las modificaciones.",
   "build.reload": "Recargar proyecto",
@@ -144,6 +156,9 @@
   "commands.toggleSidebar": "Mostrar/ocultar explorador",
   "commands.undo": "Deshacer (explorador)",
   "commands.settings": "Abrir ajustes",
+  "commands.toggleTerminal": "Mostrar/ocultar terminal",
+  "commands.restartTerminal": "Reiniciar terminal",
+  "commands.killTerminal": "Matar terminal",
 
   "external.resolveFailed": "Error al resolver el símbolo",
   "external.unknownClass": "Clase",
@@ -196,5 +211,14 @@
   "update.checkNow": "Buscar actualizaciones",
   "update.checking": "Buscando…",
   "update.upToDate": "Estás al día.",
-  "update.checkFailed": "No se pudo comprobar si hay actualizaciones."
+  "update.checkFailed": "No se pudo comprobar si hay actualizaciones.",
+
+  "terminal.title": "Terminal",
+  "terminal.close": "Ocultar terminal (Alt+T)",
+  "terminal.restart": "Reiniciar terminal (Alt+R)",
+  "terminal.kill": "Matar terminal (Alt+K)",
+  "terminal.noBridge": "Sin puente Electron. Que raro",
+  "terminal.spawnFailed": "No se pudo iniciar la terminal. Que raro.",
+  "terminal.exited": "[proceso terminado con código {code}]",
+  "terminal.exitedHint": "El proceso de la terminal terminó."
 }

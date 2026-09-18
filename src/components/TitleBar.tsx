@@ -29,11 +29,11 @@ export default function TitleBar({
 
   return (
     <div
-      className="titlebar-drag flex h-8 shrink-0 select-none items-center bg-graphite-950"
+      className="titlebar-drag flex h-8 shrink-0 select-none items-center bg-[var(--mc-bg)]"
       onDoubleClick={() => api()?.toggleMaximize?.()}
     >
       <div className="flex items-center gap-1.5 px-2.5">
-        <Coffee size={13} className="text-ember-500" />
+        <Coffee size={13} className="text-[var(--mc-accent-strong)]" />
         <span className="text-[12px] text-graphite-400">Mini Code</span>
       </div>
 
@@ -41,7 +41,7 @@ export default function TitleBar({
 
       {lspStatus && lspStatus !== "off" && (
         <div
-          className="titlebar-no-drag mr-2 flex items-center gap-1.5 rounded-full border border-graphite-800 bg-graphite-900 px-2.5 py-1"
+          className="titlebar-no-drag mr-2 flex items-center gap-1.5 rounded-full border border-[var(--mc-border)] bg-[var(--mc-panel)] px-2.5 py-1"
           title={
             lspStatus === "ready"
               ? t("titlebar.lsp.readyTitle")
@@ -58,7 +58,7 @@ export default function TitleBar({
                 ? "bg-green-400"
                 : lspStatus === "error"
                   ? "bg-red-400"
-                  : "animate-pulse bg-ember-400"
+                  : "animate-pulse bg-[var(--mc-accent)]"
             }`}
           />
           <span className="text-[11px] text-graphite-400">
