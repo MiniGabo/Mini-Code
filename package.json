@@ -50,6 +50,7 @@
     "productName": "Mini Code",
     "artifactName": "${productName} Setup ${version}.${ext}",
     "icon": "assets/icon.ico",
+    "npmRebuild": false,
     "files": [
       "dist/**/*",
       "electron/**/*",
